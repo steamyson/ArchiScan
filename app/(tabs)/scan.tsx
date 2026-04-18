@@ -14,6 +14,7 @@ import { captureLocation } from "../../lib/location";
 import { reverseGeocode } from "../../lib/geocoding";
 import { uploadFacadePhoto, type PhotoOrientation } from "../../lib/storage";
 import { useAuthStore } from "../../stores/authStore";
+import { useScanStore } from "../../stores/scanStore";
 
 type ScanPhase = "camera" | "uploading" | "analyzing" | "error";
 
@@ -21,6 +22,7 @@ export default function ScanScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const session = useAuthStore((s) => s.session);
+  const setScanResult = useScanStore((s) => s.setResult);
   const [phase, setPhase] = useState<ScanPhase>("camera");
   const [errorTitle, setErrorTitle] = useState<string>("Couldn't upload photo");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -50,10 +52,11 @@ export default function ScanScreen() {
 
       try {
         const uploadStart = __DEV__ ? globalThis.performance.now() : 0;
-        const [storagePath, coords] = await Promise.all([
+        const [upload, coords] = await Promise.all([
           uploadFacadePhoto(photoPath, orientation),
           captureLocation(),
         ]);
+        const { storagePath, localCorrectedUri } = upload;
         if (__DEV__) {
           const now = globalThis.performance.now();
           console.log("[scan][timing] upload+location ms", Math.round(now - uploadStart));
@@ -72,11 +75,19 @@ export default function ScanScreen() {
               location: coords,
               address,
             });
-            const prefix = cached ? "Analysis (cached)" : "Analysis complete";
-            setUploadNotice(`${prefix}: ${analysis.building_summary.probable_style}`);
             if (__DEV__) {
-              console.log("[M2] scanId", scanId, "elements", analysis.elements.length);
+              console.log("[M2] scanId", scanId, "elements", analysis.elements.length, "cached", cached);
             }
+            setScanResult({
+              scanId,
+              analysis,
+              localPhotoUri: localCorrectedUri,
+              storagePath,
+              buildingAddress: address ? address : null,
+            });
+            setPhase("camera");
+            router.push("/overlay");
+            return;
           } catch (analyzeErr) {
             logError("analyzeFacade", analyzeErr);
             setErrorTitle("Couldn't analyze photo");
@@ -97,7 +108,7 @@ export default function ScanScreen() {
         setPhase("error");
       }
     },
-    [session],
+    [session, router, setScanResult],
   );
 
   const dismissError = useCallback(() => {

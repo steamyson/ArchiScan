@@ -35,12 +35,23 @@ async function readFileAsArrayBuffer(uri: string): Promise<ArrayBuffer> {
   return res.arrayBuffer();
 }
 
+export interface UploadedPhoto {
+  /** Remote Supabase Storage object path. */
+  storagePath: string;
+  /** Local file URI of the rotated+resized JPEG — matches what the edge function analyzed. */
+  localCorrectedUri: string;
+}
+
 /**
  * Resize to max 1500px wide (JPEG), upload to private bucket `facade-photos`.
  * Authenticated: `{user_id}/{uuid}.jpg`. Anonymous: `anonymous/{uuid}.jpg`.
- * Returns the storage object path (sign at display time).
+ * Returns the storage object path plus the on-device URI of the corrected image
+ * (the overlay layer renders the corrected copy so leader-line coordinates match).
  */
-export async function uploadFacadePhoto(localPath: string, orientation: PhotoOrientation): Promise<string> {
+export async function uploadFacadePhoto(
+  localPath: string,
+  orientation: PhotoOrientation,
+): Promise<UploadedPhoto> {
   const uploadStart = __DEV__ ? globalThis.performance.now() : 0;
   const uri = toFileUri(localPath);
   const rotation = rotationCorrectionDegrees(orientation);
@@ -80,5 +91,5 @@ export async function uploadFacadePhoto(localPath: string, orientation: PhotoOri
   if (error) {
     throw error;
   }
-  return objectPath;
+  return { storagePath: objectPath, localCorrectedUri: resized.uri };
 }

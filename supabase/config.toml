@@ -1,2 +1,4 @@
 [functions.analyze-facade]
-verify_jwt = true
+# Gateway JWT verification uses a legacy verifier that rejects ES256 (asymmetric signing keys).
+# The function re-validates the token via supabaseAuth.auth.getUser() — which hits gotrue and handles ES256 correctly.
+verify_jwt = false
