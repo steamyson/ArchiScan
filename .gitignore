@@ -49,3 +49,6 @@ crash.log
 
 # Tamagui build output (regenerated)
 .tamagui/
+
+# Supabase CLI (local link / temp)
+supabase/.temp/

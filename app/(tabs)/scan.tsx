@@ -1,23 +1,28 @@
-import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import LottieView from 'lottie-react-native';
-import { YStack, Text, Button } from 'tamagui';
-import { CameraView } from '../../components/CameraView';
-import { uploadFacadePhoto, type PhotoOrientation } from '../../lib/storage';
-import { captureLocation } from '../../lib/location';
-import { reverseGeocode } from '../../lib/geocoding';
-import { useAuthStore } from '../../stores/authStore';
+import { useCallback, useEffect, useState } from "react";
+import { StyleSheet } from "react-native";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
+import { YStack, Text, Button } from "tamagui";
+import { AnalyzingOverlay } from "../../components/AnalyzingOverlay";
+import { CameraView } from "../../components/CameraView";
+import { analyzeFacade } from "../../lib/analysis";
+import { getUserFriendlyMessage } from "../../lib/errorMessages";
+import { logError } from "../../lib/logger";
+import { captureLocation } from "../../lib/location";
+import { reverseGeocode } from "../../lib/geocoding";
+import { uploadFacadePhoto, type PhotoOrientation } from "../../lib/storage";
+import { useAuthStore } from "../../stores/authStore";
 
-type ScanPhase = 'camera' | 'uploading' | 'error';
+type ScanPhase = "camera" | "uploading" | "analyzing" | "error";
 
 export default function ScanScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const session = useAuthStore((s) => s.session);
-  const [phase, setPhase] = useState<ScanPhase>('camera');
+  const [phase, setPhase] = useState<ScanPhase>("camera");
+  const [errorTitle, setErrorTitle] = useState<string>("Couldn't upload photo");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
 
@@ -30,66 +35,79 @@ export default function ScanScreen() {
   }, [uploadNotice]);
 
   const onCaptureError = useCallback((message: string) => {
+    setErrorTitle("Camera issue");
     setErrorMessage(message);
-    setPhase('error');
+    setPhase("error");
   }, []);
 
-  const onPhotoCaptured = useCallback(async (payload: { path: string; orientation: PhotoOrientation }) => {
-    const { path: photoPath, orientation } = payload;
-    const pipelineStart = __DEV__ ? globalThis.performance.now() : 0;
-    console.log('[M1] upload pipeline started', photoPath, 'orientation', orientation);
-    setPhase('uploading');
-    setErrorMessage(null);
+  const onPhotoCaptured = useCallback(
+    async (payload: { path: string; orientation: PhotoOrientation }) => {
+      const { path: photoPath, orientation } = payload;
+      const pipelineStart = __DEV__ ? globalThis.performance.now() : 0;
+      console.log("[scan] pipeline started", photoPath, "orientation", orientation);
+      setPhase("uploading");
+      setErrorMessage(null);
 
-    // Location + geocode run in parallel with upload; M2 can persist metadata from DB later.
-    void (async () => {
-      const t0 = __DEV__ ? globalThis.performance.now() : 0;
       try {
-        const coords = await captureLocation();
-        if (coords) {
-          console.log('[M1] GPS', coords.lat, coords.lng);
-          const address = await reverseGeocode(coords.lat, coords.lng);
-          console.log('[M1] address', address);
-        } else {
-          console.log('[M1] GPS unavailable (permission denied, services off, or no fix)');
-        }
+        const uploadStart = __DEV__ ? globalThis.performance.now() : 0;
+        const [storagePath, coords] = await Promise.all([
+          uploadFacadePhoto(photoPath, orientation),
+          captureLocation(),
+        ]);
         if (__DEV__) {
-          console.log('[M1][timing] location+geocode (non-blocking) ms', Math.round(globalThis.performance.now() - t0));
+          const now = globalThis.performance.now();
+          console.log("[scan][timing] upload+location ms", Math.round(now - uploadStart));
+          console.log("[scan][timing] until after upload+location ms", Math.round(now - pipelineStart));
         }
-      } catch (err) {
-        if (__DEV__) {
-          console.warn('[M1] location metadata failed (non-blocking)', err);
-        }
-      }
-    })();
+        console.log("[scan] storage path", storagePath, "coords", coords);
 
-    try {
-      const uploadStart = __DEV__ ? globalThis.performance.now() : 0;
-      const storagePath = await uploadFacadePhoto(photoPath, orientation);
-      if (__DEV__) {
-        const now = globalThis.performance.now();
-        console.log('[M1][timing] upload (resize+storage) ms', Math.round(now - uploadStart));
-        console.log('[M1][timing] until upload done (overlay) ms', Math.round(now - pipelineStart));
+        const address = coords ? await reverseGeocode(coords.lat, coords.lng) : "";
+
+        if (session?.user?.id) {
+          setPhase("analyzing");
+          try {
+            const { scanId, analysis, cached } = await analyzeFacade({
+              imagePath: storagePath,
+              userId: session.user.id,
+              location: coords,
+              address,
+            });
+            const prefix = cached ? "Analysis (cached)" : "Analysis complete";
+            setUploadNotice(`${prefix}: ${analysis.building_summary.probable_style}`);
+            if (__DEV__) {
+              console.log("[M2] scanId", scanId, "elements", analysis.elements.length);
+            }
+          } catch (analyzeErr) {
+            logError("analyzeFacade", analyzeErr);
+            setErrorTitle("Couldn't analyze photo");
+            setErrorMessage(getUserFriendlyMessage(analyzeErr));
+            setPhase("error");
+            return;
+          }
+        } else {
+          setUploadNotice(`Uploaded: ${storagePath}`);
+        }
+
+        setPhase("camera");
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Upload failed";
+        console.error("[scan] capture pipeline error", e);
+        setErrorTitle("Couldn't upload photo");
+        setErrorMessage(message);
+        setPhase("error");
       }
-      console.log('[M1] storage path', storagePath);
-      setUploadNotice(`Uploaded: ${storagePath}`);
-      setPhase('camera');
-    } catch (e) {
-      const message = e instanceof Error ? e.message : 'Upload failed';
-      console.error('[M1] capture pipeline error', e);
-      setErrorMessage(message);
-      setPhase('error');
-    }
-  }, []);
+    },
+    [session],
+  );
 
   const dismissError = useCallback(() => {
     setErrorMessage(null);
-    setPhase('camera');
+    setPhase("camera");
   }, []);
 
   return (
     <YStack flex={1} backgroundColor="$background">
-      <CameraView onCapture={onPhotoCaptured} onCaptureError={onCaptureError} isCapturing={phase === 'uploading'} />
+      <CameraView onCapture={onPhotoCaptured} onCaptureError={onCaptureError} isCapturing={phase === "uploading" || phase === "analyzing"} />
 
       {uploadNotice ? (
         <YStack
@@ -115,18 +133,11 @@ export default function ScanScreen() {
       ) : null}
 
       {!session ? (
-        <YStack
-          position="absolute"
-          top={insets.top + 8}
-          left={16}
-          right={16}
-          gap="$2"
-          pointerEvents="box-none"
-        >
+        <YStack position="absolute" top={insets.top + 8} left={16} right={16} gap="$2" pointerEvents="box-none">
           <Text fontSize={13} fontWeight="600" color="$colorMuted" textAlign="center">
-            Sign in to save scans to Herbarium. You can still capture here.
+            Sign in to run facade analysis and save scans. You can still capture and upload photos.
           </Text>
-          <Button size="$3" backgroundColor="#1a1a1a" borderColor="#2a2a2a" borderWidth={1} onPress={() => router.push('/(auth)/sign-in')}>
+          <Button size="$3" backgroundColor="#1a1a1a" borderColor="#2a2a2a" borderWidth={1} onPress={() => router.push("/(auth)/sign-in")}>
             <Text color="#c8a96e" fontWeight="600">
               Sign in
             </Text>
@@ -134,7 +145,7 @@ export default function ScanScreen() {
         </YStack>
       ) : null}
 
-      {phase === 'uploading' ? (
+      {phase === "uploading" ? (
         <Animated.View
           entering={FadeIn.duration(200)}
           exiting={FadeOut.duration(160)}
@@ -143,7 +154,7 @@ export default function ScanScreen() {
         >
           <YStack flex={1} alignItems="center" justifyContent="center" gap="$3" padding="$4">
             <LottieView
-              source={require('../../assets/animations/loading-facade.json')}
+              source={require("../../assets/animations/loading-facade.json")}
               autoPlay
               loop
               style={{ width: 120, height: 120 }}
@@ -158,11 +169,22 @@ export default function ScanScreen() {
         </Animated.View>
       ) : null}
 
-      {phase === 'error' && errorMessage ? (
+      {phase === "analyzing" ? (
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(160)}
+          style={[StyleSheet.absoluteFill, styles.uploadOverlay]}
+          pointerEvents="auto"
+        >
+          <AnalyzingOverlay />
+        </Animated.View>
+      ) : null}
+
+      {phase === "error" && errorMessage ? (
         <Animated.View entering={FadeIn.duration(200)} style={[StyleSheet.absoluteFill, styles.uploadOverlay]} pointerEvents="auto">
           <YStack flex={1} alignItems="center" justifyContent="center" gap="$4" padding="$4">
             <Text color="$color" fontSize={16} fontWeight="600" textAlign="center">
-              {"Couldn't upload photo"}
+              {errorTitle}
             </Text>
             <Text color="$colorMuted" fontSize={14} textAlign="center">
               {errorMessage}
@@ -181,6 +203,6 @@ export default function ScanScreen() {
 
 const styles = StyleSheet.create({
   uploadOverlay: {
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: "rgba(0,0,0,0.55)",
   },
 });
