@@ -1,6 +1,27 @@
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import type { Action } from 'expo-image-manipulator/build/ImageManipulator.types';
 import { randomUUID } from 'expo-crypto';
+import type { Orientation } from 'react-native-vision-camera';
 import { supabase } from './supabase';
+
+/** Same as VisionCamera `Photo.orientation` — re-exported for callers. */
+export type PhotoOrientation = Orientation;
+
+/** Clockwise `expo-image-manipulator` rotation to bake `Photo.orientation` into pixels (RN Image ignores EXIF). */
+function rotationCorrectionDegrees(orientation: Orientation): number {
+  switch (orientation) {
+    case 'up':
+      return 0;
+    case 'right':
+      return 270;
+    case 'down':
+      return 180;
+    case 'left':
+      return 90;
+    default:
+      return 0;
+  }
+}
 
 function toFileUri(path: string): string {
   if (path.startsWith('file://')) {
@@ -19,13 +40,15 @@ async function readFileAsArrayBuffer(uri: string): Promise<ArrayBuffer> {
  * Authenticated: `{user_id}/{uuid}.jpg`. Anonymous: `anonymous/{uuid}.jpg`.
  * Returns the storage object path (sign at display time).
  */
-export async function uploadFacadePhoto(localPath: string): Promise<string> {
+export async function uploadFacadePhoto(localPath: string, orientation: PhotoOrientation): Promise<string> {
   const uri = toFileUri(localPath);
-  const resized = await manipulateAsync(
-    uri,
-    [{ resize: { width: 1500 } }],
-    { compress: 0.85, format: SaveFormat.JPEG }
-  );
+  const rotation = rotationCorrectionDegrees(orientation);
+  const actions: Action[] = [];
+  if (rotation !== 0) {
+    actions.push({ rotate: rotation });
+  }
+  actions.push({ resize: { width: 1500 } });
+  const resized = await manipulateAsync(uri, actions, { compress: 0.85, format: SaveFormat.JPEG });
 
   const {
     data: { session },

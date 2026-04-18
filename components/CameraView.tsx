@@ -13,13 +13,16 @@ import Animated, { runOnJS, useSharedValue, withSequence, withTiming } from 'rea
 import { YStack, Text, Button } from 'tamagui';
 import { FocusRing } from './FocusRing';
 import { CaptureButton } from './CaptureButton';
+import type { PhotoOrientation } from '../lib/storage';
 
 type CameraViewProps = {
-  onCapture: (photoPath: string) => void;
+  onCapture: (payload: { path: string; orientation: PhotoOrientation }) => void;
+  /** Called when takePhoto fails (session not ready, etc.) — otherwise errors are silent. */
+  onCaptureError?: (message: string) => void;
   isCapturing?: boolean;
 };
 
-export function CameraView({ onCapture, isCapturing }: CameraViewProps) {
+export function CameraView({ onCapture, onCaptureError, isCapturing }: CameraViewProps) {
   const isFocused = useIsFocused();
   const device = useCameraDevice('back');
   const photoOutput = usePhotoOutput();
@@ -58,11 +61,13 @@ export function CameraView({ onCapture, isCapturing }: CameraViewProps) {
     try {
       const photo = await photoOutput.capturePhoto({ flashMode: 'off', enableShutterSound: false }, {});
       const path = await photo.saveToTemporaryFileAsync();
-      onCapture(path);
-    } catch {
-      // Session can still be wiring up, or camera paused — avoid surfacing noisy native cancel errors
+      onCapture({ path, orientation: photo.orientation });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Photo capture failed';
+      console.warn('[M1] photo capture error', e);
+      onCaptureError?.(msg);
     }
-  }, [isFocused, onCapture, photoOutput, sessionStarted]);
+  }, [isFocused, onCapture, onCaptureError, photoOutput, sessionStarted]);
 
   if (!hasPermission) {
     return (

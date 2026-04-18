@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import LottieView from 'lottie-react-native';
 import { YStack, Text, Button } from 'tamagui';
 import { CameraView } from '../../components/CameraView';
-import { uploadFacadePhoto } from '../../lib/storage';
+import { uploadFacadePhoto, type PhotoOrientation } from '../../lib/storage';
 import { captureLocation } from '../../lib/location';
 import { reverseGeocode } from '../../lib/geocoding';
 import { useAuthStore } from '../../stores/authStore';
@@ -19,8 +19,24 @@ export default function ScanScreen() {
   const session = useAuthStore((s) => s.session);
   const [phase, setPhase] = useState<ScanPhase>('camera');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
 
-  const onPhotoCaptured = useCallback(async (photoPath: string) => {
+  useEffect(() => {
+    if (!uploadNotice) {
+      return;
+    }
+    const t = setTimeout(() => setUploadNotice(null), 8000);
+    return () => clearTimeout(t);
+  }, [uploadNotice]);
+
+  const onCaptureError = useCallback((message: string) => {
+    setErrorMessage(message);
+    setPhase('error');
+  }, []);
+
+  const onPhotoCaptured = useCallback(async (payload: { path: string; orientation: PhotoOrientation }) => {
+    const { path: photoPath, orientation } = payload;
+    console.log('[M1] upload pipeline started', photoPath, 'orientation', orientation);
     setPhase('uploading');
     setErrorMessage(null);
     try {
@@ -30,11 +46,12 @@ export default function ScanScreen() {
         const address = await reverseGeocode(coords.lat, coords.lng);
         console.log('[M1] address', address);
       } else {
-        console.log('[M1] GPS unavailable (permission denied or error)');
+        console.log('[M1] GPS unavailable (permission denied, services off, or no fix)');
       }
 
-      const storagePath = await uploadFacadePhoto(photoPath);
+      const storagePath = await uploadFacadePhoto(photoPath, orientation);
       console.log('[M1] storage path', storagePath);
+      setUploadNotice(`Uploaded: ${storagePath}`);
       setPhase('camera');
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Upload failed';
@@ -51,7 +68,30 @@ export default function ScanScreen() {
 
   return (
     <YStack flex={1} backgroundColor="$background">
-      <CameraView onCapture={onPhotoCaptured} isCapturing={phase === 'uploading'} />
+      <CameraView onCapture={onPhotoCaptured} onCaptureError={onCaptureError} isCapturing={phase === 'uploading'} />
+
+      {uploadNotice ? (
+        <YStack
+          position="absolute"
+          bottom={100}
+          left={16}
+          right={16}
+          backgroundColor="#1a1a1a"
+          borderColor="#2a2a2a"
+          borderWidth={1}
+          padding="$3"
+          borderRadius={8}
+        >
+          <Text fontSize={13} color="$color" textAlign="center">
+            {uploadNotice}
+          </Text>
+          <Text fontSize={11} color="$colorMuted" textAlign="center" marginTop="$2">
+            {
+              "Open Herbarium (signed in) to see uploads. On Android, JS logs may only appear in: adb logcat *:S ReactNativeJS:V"
+            }
+          </Text>
+        </YStack>
+      ) : null}
 
       {!session ? (
         <YStack
