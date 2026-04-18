@@ -1,0 +1,247 @@
+# FacadeLens — Cursor Rules
+
+You are building FacadeLens: a React Native (Expo bare workflow) mobile app that uses AI to identify and critique architectural elements in building facade photos. Think iNaturalist for architecture.
+
+Read the full product spec at `facadelens-roadmap/ROADMAP.md` and the relevant milestone brief before writing any code for that milestone.
+
+---
+
+## Project Identity
+
+- App name: FacadeLens
+- Platform: iOS + Android (React Native, Expo bare workflow)
+- Architecture: New Architecture enabled (Fabric + JSI)
+- Primary audience: architecture students and curious urbanists
+- Aesthetic: premium, dark, architectural — warm gold accent, minimal chrome
+
+---
+
+## Tech Stack (do not deviate)
+
+| Layer | Package |
+|---|---|
+| Framework | React Native + Expo (bare) |
+| Routing | Expo Router (file-based) |
+| UI | Tamagui |
+| Animation | react-native-reanimated v3 |
+| Loading animations | lottie-react-native |
+| Icons | phosphor-react-native (primary), @tabler/icons-react-native (secondary) |
+| Camera | react-native-vision-camera v4 |
+| SVG / overlay | react-native-svg |
+| State | Zustand |
+| Backend | Supabase (PostgreSQL + PostGIS + Storage + Edge Functions) |
+| AI | Google Gemini 2.5 Flash via Edge Function |
+
+**Never introduce new packages without flagging it. Never use expo-camera — always use react-native-vision-camera.**
+
+---
+
+## Code Style
+
+### TypeScript
+- Strict mode always on
+- No `any` types — use `unknown` with type guards if shape is uncertain
+- Prefer `interface` over `type` for object shapes; use `type` for unions and aliases
+- Export types from `types/` directory, not inline in components
+- All async functions must handle errors explicitly — no unhandled promise rejections
+
+### React Native
+- Functional components only — no class components
+- Use `const` arrow functions for all components: `export function MyComponent() {}`
+- Props interfaces named `{ComponentName}Props`
+- Destructure props at function signature, not inside body
+- Never use `StyleSheet.create` inside a component body — define at module level or use Tamagui tokens
+- Use `StyleSheet.absoluteFill` for fullscreen overlays, not manual `{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }`
+
+### File naming
+- Components: `PascalCase.tsx`
+- Hooks: `useHookName.ts`
+- Lib utilities: `camelCase.ts`
+- Types: `camelCase.ts` (inside `types/` directory)
+- Constants: `SCREAMING_SNAKE_CASE` for values, `camelCase.ts` for files
+
+### Imports order
+1. React / React Native core
+2. Expo modules
+3. Third-party packages (Tamagui, Reanimated, Vision Camera, etc.)
+4. Internal lib utilities (`../lib/`)
+5. Internal stores (`../stores/`)
+6. Internal types (`../types/`)
+7. Internal components (`../components/`)
+
+---
+
+## Tamagui Rules
+
+- Always import from `tamagui`, not from `@tamagui/core` directly
+- Use Tamagui layout components for all layout: `YStack` (column), `XStack` (row), `ZStack` (absolute layers)
+- Use Tamagui `Text` for all text — never React Native `Text`
+- Use Tamagui `Button` for all interactive buttons
+- Use design tokens for all spacing, color, and radius — never hardcode pixel values for these
+- Allowed hardcoded values: image dimensions, SVG coordinates, Lottie sizes, fixed layout constants
+- Common token shorthands:
+  - `bg="$background"` — main background (#0a0a0a)
+  - `bg="$backgroundStrong"` — card/surface (#111111)
+  - `bg="$backgroundFocus"` — subtle highlight (#1a1a1a)
+  - `color="$color"` — primary text (#f0ede8)
+  - `color="$colorMuted"` — secondary text (#888880)
+  - `borderColor="$borderColor"` — borders (#2a2a2a)
+  - Accent gold: `'#c8a96e'` (not a token — use literal string)
+
+### Tamagui shorthand props (use always)
+```
+fos   = fontSize
+fw    = fontWeight
+lh    = lineHeight
+ta    = textAlign
+tt    = textTransform
+ls    = letterSpacing
+ai    = alignItems
+jc    = justifyContent
+br    = borderRadius
+px/py = paddingHorizontal/paddingVertical
+mx/my = marginHorizontal/marginVertical
+w/h   = width/height
+```
+
+---
+
+## Phosphor Icons Rules
+
+- Always specify `weight` prop — default is `regular`; use `duotone` for accent icons, `fill` for active states
+- Always specify `size` prop — never rely on defaults
+- Standard sizes: 12 (inline), 16 (UI labels), 20 (buttons), 24 (navigation), 32+ (empty states)
+- Standard colors:
+  - Active / accent: `'#c8a96e'` (warm gold)
+  - Default UI: `'#888880'` (muted)
+  - Destructive: `'#c96e6e'`
+  - Success: `'#6bc96e'`
+- Never pass Tamagui tokens to icon `color` prop — use literal strings
+
+```tsx
+// Correct
+<Camera size={24} color="#c8a96e" weight="duotone" />
+
+// Wrong
+<Camera size={24} color="$accent" />  // tokens don't work here
+```
+
+---
+
+## Reanimated Rules
+
+- All animation values are `useSharedValue` — never `useAnimatedValue` (old API)
+- All animated styles are `useAnimatedStyle` — never `Animated.Value.interpolate`
+- Wrap native components with `Animated.createAnimatedComponent` before animating props
+- For entrance/exit animations, use `entering` / `exiting` props on `Animated.View` with Reanimated presets (`FadeIn`, `SlideInDown`, etc.)
+- Worklet rule: any function called inside `useAnimatedStyle` or a gesture handler's `onUpdate`/`onEnd` must be a worklet (add `'worklet'` directive or wrap with `runOnJS` for non-worklet calls)
+- Stagger delays: 80ms per item for label animations, 100ms per section for critique
+
+---
+
+## Supabase Rules
+
+- Always use the Supabase client from `lib/supabase.ts` — never instantiate a new client
+- RLS is always on — never use service role key on the client side
+- Service role key is Edge Function only
+- All database operations must handle the `{ data, error }` tuple — never ignore the error
+- Use `.select('*')` only when you need all fields; prefer explicit field lists for performance
+- Image paths in Storage follow the pattern: `{user_id}/{uuid}.jpg`
+- Signed URLs expire in 3600 seconds (1 hour) — cache them in component state, don't re-request on every render
+
+---
+
+## Vision Camera Rules
+
+- Always check `hasPermission` before rendering `<Camera>`
+- Always check `device` is not null/undefined before rendering `<Camera>`
+- Camera ref type: `useRef<Camera>(null)`
+- `takePhoto()` returns a `PhotoFile` with a `path` property (local file URI)
+- `focus()` takes `{ x, y }` in view coordinates — use gesture handler tap coordinates
+- Zoom: bind a Reanimated `useSharedValue` to the `zoom` prop via `useAnimatedProps`
+- Never call `takePhoto()` if camera is not active
+
+---
+
+## State Management (Zustand)
+
+- One store per domain: `authStore`, `herbariumStore`, `scanStore`
+- Stores live in `stores/` directory
+- Always define the full state interface before the store
+- Selectors: always use selector functions, not destructuring: `const session = useAuthStore(s => s.session)`
+- Never put derived state in stores — compute it in components or hooks
+
+---
+
+## Error Handling Patterns
+
+- User-facing errors: show Tamagui `Toast` or inline error `Text` — never `Alert.alert` (looks native/ugly)
+- Network errors: always offer a retry action
+- Supabase errors: log to console in development; send to Sentry in production
+- Never swallow errors silently with empty catch blocks
+- Loading states: every async operation must have a corresponding loading boolean in state
+
+```tsx
+// Pattern for async operations
+const [loading, setLoading] = useState(false)
+const [error, setError] = useState<string | null>(null)
+
+const handleAction = async () => {
+  setLoading(true)
+  setError(null)
+  try {
+    await doSomething()
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'Something went wrong')
+  } finally {
+    setLoading(false)
+  }
+}
+```
+
+---
+
+## Navigation (Expo Router)
+
+- Route groups: `(tabs)` for main navigation, `(auth)` for auth screens
+- Auth-gated tabs: hide routes with `href: null` in `app/(tabs)/_layout.tsx` when logged out; do not mount `<Redirect>` from `(tabs)` while `(auth)` screens are active (breaks Fabric). Entry to auth from **Scan** when logged out.
+- Navigate with `useRouter` hook, not `navigation.navigate`
+- Deep links use the scheme `facadelens://`
+- Never use `router.push` for tab navigation — use `router.replace` or direct tab links
+
+---
+
+## Component Architecture
+
+- Screens live in `app/` — they are thin orchestrators, not logic containers
+- Business logic lives in `lib/` utilities or custom hooks in `hooks/`
+- Reusable UI lives in `components/`
+- Maximum component file length: 200 lines. If a component exceeds this, extract sub-components.
+- Props should be minimal — if a component needs more than 6 props, consider if it's doing too much
+
+---
+
+## What NOT to do
+
+- Do not use `expo-camera` — always `react-native-vision-camera`
+- Do not use `StyleSheet.create` for colors or spacing that should be Tamagui tokens
+- Do not use React Native `View` or `Text` directly — use Tamagui equivalents
+- Do not use `NativeWind` or `className` props — Tamagui only
+- Do not hardcode hex colors except: `#c8a96e` (accent gold), `#6bc96e` (success), `#c96e6e` (error)
+- Do not use `console.log` in production paths — use a logging utility
+- Do not add new dependencies without checking they support New Architecture (Fabric)
+- Do not use `Animated` from React Native core — always `react-native-reanimated`
+- Do not store sensitive data in AsyncStorage — use `expo-secure-store` for auth tokens
+
+---
+
+## Milestone Context
+
+When working on a milestone, always read its brief first:
+- M0: `facadelens-roadmap/M0_foundation.md`
+- M1: `facadelens-roadmap/M1_capture.md`
+- M2: `facadelens-roadmap/M2_ai_pipeline.md`
+- M3: `facadelens-roadmap/M3_overlay.md`
+- M4: `facadelens-roadmap/M4_critique.md`
+- M5: `facadelens-roadmap/M5_herbarium.md`
+- M6: `facadelens-roadmap/M6_polish.md`

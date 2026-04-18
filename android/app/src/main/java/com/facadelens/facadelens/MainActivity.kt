@@ -1,4 +1,4 @@
-package com.facadelens
+package com.facadelens.facadelens
 
 import android.os.Build
 import android.os.Bundle

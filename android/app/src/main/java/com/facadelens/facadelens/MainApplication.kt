@@ -1,4 +1,4 @@
-package com.facadelens
+package com.facadelens.facadelens
 
 import android.app.Application
 import android.content.res.Configuration

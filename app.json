@@ -1,7 +1,22 @@
 {
   "expo": {
-    "name": "facadelens",
+    "name": "FacadeLens",
     "slug": "facadelens",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "scheme": "facadelens",
+    "newArchEnabled": true,
+    "userInterfaceStyle": "dark",
+    "plugins": ["expo-router"],
+    "ios": {
+      "bundleIdentifier": "com.facadelens.facadelens",
+      "infoPlist": {
+        "NSCameraUsageDescription": "FacadeLens uses your camera to scan building facades.",
+        "NSLocationWhenInUseUsageDescription": "FacadeLens uses your location to record where you scanned a building."
+      }
+    },
+    "android": {
+      "package": "com.facadelens.facadelens",
+      "permissions": ["CAMERA", "ACCESS_FINE_LOCATION"]
+    }
   }
 }

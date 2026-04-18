@@ -6,6 +6,7 @@ node_modules/
 # Expo
 .expo/
 dist/
+dist-test/
 web-build/
 expo-env.d.ts
 
@@ -30,7 +31,21 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript
 *.tsbuildinfo
+
+# IDE / local tooling
+.idea/
+.claude/settings.local.json
+
+# claude-mem plugin (local DB, logs, PID)
+claude-mem/
+
+# ad-hoc crash dumps
+crash.log
+
+# Tamagui build output (regenerated)
+.tamagui/
