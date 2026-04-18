@@ -36,20 +36,41 @@ export default function ScanScreen() {
 
   const onPhotoCaptured = useCallback(async (payload: { path: string; orientation: PhotoOrientation }) => {
     const { path: photoPath, orientation } = payload;
+    const pipelineStart = __DEV__ ? globalThis.performance.now() : 0;
     console.log('[M1] upload pipeline started', photoPath, 'orientation', orientation);
     setPhase('uploading');
     setErrorMessage(null);
-    try {
-      const coords = await captureLocation();
-      if (coords) {
-        console.log('[M1] GPS', coords.lat, coords.lng);
-        const address = await reverseGeocode(coords.lat, coords.lng);
-        console.log('[M1] address', address);
-      } else {
-        console.log('[M1] GPS unavailable (permission denied, services off, or no fix)');
-      }
 
+    // Location + geocode run in parallel with upload; M2 can persist metadata from DB later.
+    void (async () => {
+      const t0 = __DEV__ ? globalThis.performance.now() : 0;
+      try {
+        const coords = await captureLocation();
+        if (coords) {
+          console.log('[M1] GPS', coords.lat, coords.lng);
+          const address = await reverseGeocode(coords.lat, coords.lng);
+          console.log('[M1] address', address);
+        } else {
+          console.log('[M1] GPS unavailable (permission denied, services off, or no fix)');
+        }
+        if (__DEV__) {
+          console.log('[M1][timing] location+geocode (non-blocking) ms', Math.round(globalThis.performance.now() - t0));
+        }
+      } catch (err) {
+        if (__DEV__) {
+          console.warn('[M1] location metadata failed (non-blocking)', err);
+        }
+      }
+    })();
+
+    try {
+      const uploadStart = __DEV__ ? globalThis.performance.now() : 0;
       const storagePath = await uploadFacadePhoto(photoPath, orientation);
+      if (__DEV__) {
+        const now = globalThis.performance.now();
+        console.log('[M1][timing] upload (resize+storage) ms', Math.round(now - uploadStart));
+        console.log('[M1][timing] until upload done (overlay) ms', Math.round(now - pipelineStart));
+      }
       console.log('[M1] storage path', storagePath);
       setUploadNotice(`Uploaded: ${storagePath}`);
       setPhase('camera');
