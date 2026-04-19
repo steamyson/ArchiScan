@@ -1,11 +1,14 @@
 import { useEffect } from "react";
-import { Pressable } from "react-native";
+import { Dimensions, Pressable, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "phosphor-react-native";
 import { YStack, XStack, Text } from "tamagui";
 import { OverlayCanvas } from "../components/OverlayCanvas";
+import { CritiqueScreen, CritiqueUnavailable } from "../components/CritiqueScreen";
 import { useScanStore } from "../stores/scanStore";
+
+const SCREEN_HEIGHT = Dimensions.get("window").height;
 
 export default function OverlayScreen() {
   const router = useRouter();
@@ -34,7 +37,25 @@ export default function OverlayScreen() {
 
   return (
     <YStack flex={1} backgroundColor="$background">
-      <OverlayCanvas elements={analysis.elements} imageUri={localPhotoUri} />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom }}
+        showsVerticalScrollIndicator={false}
+      >
+        <YStack height={SCREEN_HEIGHT} position="relative">
+          <OverlayCanvas elements={analysis.elements} imageUri={localPhotoUri} />
+        </YStack>
+
+        {analysis.critique ? (
+          <CritiqueScreen
+            critique={analysis.critique}
+            summary={analysis.building_summary}
+            address={buildingAddress}
+          />
+        ) : (
+          <CritiqueUnavailable />
+        )}
+      </ScrollView>
 
       <XStack
         position="absolute"
