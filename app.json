@@ -6,7 +6,11 @@
     "scheme": "facadelens",
     "newArchEnabled": true,
     "userInterfaceStyle": "dark",
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      "expo-web-browser",
+      "expo-font"
+    ],
     "ios": {
       "bundleIdentifier": "com.facadelens.facadelens",
       "infoPlist": {
@@ -16,7 +20,11 @@
     },
     "android": {
       "package": "com.facadelens.facadelens",
-      "permissions": ["CAMERA", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     }
   }
 }

@@ -1,6 +1,4 @@
-import { YStack, Text } from "tamagui";
-import { Metronome, Ruler, Cube, Buildings, Sun } from "phosphor-react-native";
-import type { Icon } from "phosphor-react-native";
+import { ScrollView, StyleSheet, View, Text } from "react-native";
 import type { BuildingSummary, Critique } from "../types/scan";
 import { stripMarkdown } from "../lib/critiqueUtils";
 import { BuildingSummaryHeader } from "./BuildingSummaryHeader";
@@ -16,54 +14,91 @@ interface CritiqueScreenProps {
 interface SectionConfig {
   key: keyof Critique;
   title: string;
-  Icon: Icon;
+  num: string;
 }
 
 const SECTIONS: SectionConfig[] = [
-  { key: "rhythm_and_repetition", title: "Rhythm & Repetition", Icon: Metronome },
-  { key: "proportion_and_scale", title: "Proportion & Scale", Icon: Ruler },
-  { key: "materiality_and_tectonics", title: "Materiality & Tectonics", Icon: Cube },
-  { key: "contextual_dialogue", title: "Contextual Dialogue", Icon: Buildings },
-  { key: "light_and_shadow", title: "Light & Shadow", Icon: Sun },
+  { key: "rhythm_and_repetition", title: "Rhythm & Repetition", num: "01" },
+  { key: "proportion_and_scale", title: "Proportion & Scale", num: "02" },
+  { key: "materiality_and_tectonics", title: "Materiality & Tectonics", num: "03" },
+  { key: "contextual_dialogue", title: "Contextual Dialogue", num: "04" },
+  { key: "light_and_shadow", title: "Light & Shadow", num: "05" },
 ];
 
 export function CritiqueScreen({ critique, summary, address }: CritiqueScreenProps) {
   return (
-    <YStack px="$5" pt="$5" bg="$background">
-      <BuildingSummaryHeader summary={summary} address={address} />
-      {SECTIONS.map(({ key, title, Icon }, i) => (
+    <View style={styles.container}>
+      <BuildingSummaryHeader
+        summary={summary}
+        address={address}
+        elementCount={undefined}
+      />
+      {SECTIONS.map(({ key, title, num }, i) => (
         <CritiqueSection
           key={key}
           title={title}
           body={stripMarkdown(critique[key] ?? "")}
-          IconComponent={Icon}
-          delay={i * 100}
+          num={num}
+          delay={i * 60}
         />
       ))}
-      <AIDisclosure />
-    </YStack>
+      <View style={styles.disclosureWrap}>
+        <AIDisclosure />
+      </View>
+    </View>
   );
 }
 
 export function CritiqueUnavailable() {
   return (
-    <YStack bg="$background" ai="center" jc="center" px="$6" py="$10">
-      <Text fos={14} color="$colorMuted" ta="center">
-        Critique unavailable for this scan.
-      </Text>
-    </YStack>
+    <View style={styles.unavailable}>
+      <Text style={styles.unavailableText}>Critique unavailable for this scan.</Text>
+    </View>
   );
 }
 
 export function CritiqueSkeleton() {
   return (
-    <YStack px="$5" pt="$5" gap="$5" bg="$background">
+    <View style={styles.skeleton}>
       {[0, 1, 2, 3, 4].map((i) => (
-        <YStack key={i} gap="$2">
-          <YStack w={120} h={14} br="$2" bg="$backgroundFocus" />
-          <YStack w="100%" h={60} br="$2" bg="$backgroundFocus" />
-        </YStack>
+        <View key={i} style={styles.skeletonItem}>
+          <View style={[styles.skeletonLine, { width: 120, height: 14 }]} />
+          <View style={[styles.skeletonLine, { width: "100%", height: 60 }]} />
+        </View>
       ))}
-    </YStack>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: "#0a0a0a",
+  },
+  disclosureWrap: {
+    margin: 20,
+  },
+  unavailable: {
+    backgroundColor: "#0a0a0a",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 40,
+  },
+  unavailableText: {
+    fontSize: 14,
+    color: "#888880",
+    textAlign: "center",
+  },
+  skeleton: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    gap: 20,
+  },
+  skeletonItem: {
+    gap: 8,
+  },
+  skeletonLine: {
+    borderRadius: 4,
+    backgroundColor: "#1a1a1a",
+  },
+});

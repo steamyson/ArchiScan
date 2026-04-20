@@ -1,116 +1,93 @@
-import { useCallback, useState } from 'react';
-import { FlatList, Image, RefreshControl } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { YStack, Text, Spinner } from 'tamagui';
-import { BookBookmark } from 'phosphor-react-native';
-import { useAuthStore } from '../../stores/authStore';
-import { listUserFacadePhotos, type FacadePhotoItem } from '../../lib/facadeUploads';
+import { useState } from "react";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { YStack, XStack, Text, Button } from "tamagui";
+import { BookBookmark, Funnel, GridFour, List } from "phosphor-react-native";
+import { useHerbariumScans } from "../../hooks/useHerbariumScans";
+import { useHerbariumStore } from "../../stores/herbariumStore";
+import { useAuthStore } from "../../stores/authStore";
+import { HerbariumGrid } from "../../components/HerbariumGrid";
+import { FilterSheet } from "../../components/FilterSheet";
+import { FullScreenError } from "../../components/shared/FullScreenError";
+import type { ScanRecord } from "../../types/scan";
 
 export default function HerbariumScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const session = useAuthStore((s) => s.session);
-  const userId = session?.user.id;
-  const [items, setItems] = useState<FacadePhotoItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const viewMode = useHerbariumStore((s) => s.viewMode);
+  const setViewMode = useHerbariumStore((s) => s.setViewMode);
+  const filters = useHerbariumStore((s) => s.filters);
+  const { scans, signedUrls, loading, error, refetch } = useHerbariumScans();
+  const [filterOpen, setFilterOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!userId) {
-      setItems([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const rows = await listUserFacadePhotos(userId);
-      setItems(rows);
-      if (rows.length) {
-        console.log('[Herbarium] loaded', rows.length, 'facade photo(s) from storage');
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Could not load photos';
-      setError(msg);
-      console.warn('[Herbarium] list failed', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load])
-  );
-
-  if (!userId) {
+  if (!session) {
     return (
-      <YStack flex={1} backgroundColor="$background" alignItems="center" justifyContent="center" gap="$4" padding="$4">
+      <YStack flex={1} bg="$background" ai="center" jc="center" gap="$4" p="$6">
         <BookBookmark size={56} color="#888880" weight="duotone" />
-        <Text fontSize={17} fontWeight="600" color="$color" textAlign="center">
-          Sign in to see your herbarium
+        <Text fos={17} fontWeight="600" color="$color" ta="center">
+          Sign in to see your Herbarium
         </Text>
       </YStack>
     );
   }
 
-  if (loading && items.length === 0) {
-    return (
-      <YStack flex={1} backgroundColor="$background" alignItems="center" justifyContent="center">
-        <Spinner size="large" color="#c8a96e" />
-      </YStack>
-    );
+  if (error && scans.length === 0) {
+    return <FullScreenError message={error} onRetry={refetch} />;
   }
 
-  if (error) {
-    return (
-      <YStack flex={1} backgroundColor="$background" alignItems="center" justifyContent="center" gap="$3" padding="$4">
-        <Text fontSize={16} fontWeight="600" color="$color" textAlign="center">
-          Could not load your photos
-        </Text>
-        <Text fontSize={14} color="$colorMuted" textAlign="center">
-          {error}
-        </Text>
-        <Text fontSize={12} color="$colorMuted" textAlign="center">
-          Confirm Supabase Storage has a SELECT policy for your user folder (see ENV_SETUP.md).
-        </Text>
-      </YStack>
-    );
-  }
+  const handleCardPress = (scan: ScanRecord) => {
+    router.push({ pathname: "/scan/[id]", params: { id: scan.id } });
+  };
 
-  if (items.length === 0) {
-    return (
-      <YStack flex={1} backgroundColor="$background" alignItems="center" justifyContent="center" gap="$4" padding="$4">
-        <BookBookmark size={56} color="#888880" weight="duotone" />
-        <Text fontSize={17} fontWeight="600" color="$color" textAlign="center">
-          No facade photos yet
-        </Text>
-        <Text fontSize={14} color="$colorMuted" textAlign="center">
-          Captures from the Scan tab are stored here after upload (signed-in users).
-        </Text>
-      </YStack>
-    );
-  }
+  const hasActiveFilters =
+    Boolean(filters.style || filters.tag || filters.searchQuery || filters.dateFrom || filters.dateTo);
 
   return (
-    <YStack flex={1} backgroundColor="$background" paddingTop="$3">
-      <Text fontSize={13} fontWeight="600" color="$colorMuted" paddingHorizontal="$4" marginBottom="$2">
-        FACADE PHOTOS (SUPABASE STORAGE)
-      </Text>
-      <FlatList
-        style={{ flex: 1 }}
-        data={items}
-        keyExtractor={(item) => item.path}
-        contentContainerStyle={{ gap: 12, paddingHorizontal: 16, paddingBottom: 24 }}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} tintColor="#c8a96e" />}
-        renderItem={({ item }) => (
-          <YStack backgroundColor="#111111" borderRadius={8} overflow="hidden" borderWidth={1} borderColor="#2a2a2a">
-            <Image source={{ uri: item.signedUrl }} style={{ width: '100%', height: 220 }} resizeMode="cover" />
-            <Text fontSize={11} color="$colorMuted" padding="$2" numberOfLines={1}>
-              {item.path.split('/').pop()}
-            </Text>
-          </YStack>
-        )}
+    <YStack flex={1} bg="$background" pt={insets.top}>
+      <XStack ai="center" jc="space-between" px="$5" pt="$3" pb="$3">
+        <Text fos={26} color="$color" style={{ fontFamily: "BebasNeue_400Regular", letterSpacing: 3 }}>
+          HERBARIUM
+        </Text>
+        <XStack gap="$2">
+          <Button
+            size="$3"
+            chromeless
+            onPress={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
+            icon={
+              viewMode === "grid" ? (
+                <List size={20} color="#c8a96e" weight="regular" />
+              ) : (
+                <GridFour size={20} color="#c8a96e" weight="regular" />
+              )
+            }
+            aria-label="Toggle view mode"
+          />
+          <Button
+            size="$3"
+            chromeless
+            onPress={() => setFilterOpen(true)}
+            icon={
+              <Funnel
+                size={20}
+                color={hasActiveFilters ? "#c8a96e" : "#888880"}
+                weight={hasActiveFilters ? "fill" : "regular"}
+              />
+            }
+            aria-label="Filter"
+          />
+        </XStack>
+      </XStack>
+
+      <HerbariumGrid
+        scans={scans}
+        signedUrls={signedUrls}
+        onCardPress={handleCardPress}
+        loading={loading}
+        onRefresh={refetch}
       />
+
+      <FilterSheet open={filterOpen} onClose={() => setFilterOpen(false)} />
     </YStack>
   );
 }

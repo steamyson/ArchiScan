@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ScrollView } from 'react-native-gesture-handler';
 import { YStack, Input, Button, Text } from 'tamagui';
+import { OAuthButtons } from '../../components/OAuthButtons';
 import { signUpWithEmail } from '../../lib/auth';
 
 export default function SignUpScreen() {
@@ -94,6 +95,7 @@ export default function SignUpScreen() {
               Sign Up
             </Text>
           </Button>
+          <OAuthButtons onSuccess={() => router.replace('/(tabs)/scan')} disabled={loading} />
           <Button
             unstyled
             marginTop="$3"

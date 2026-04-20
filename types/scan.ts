@@ -48,4 +48,6 @@ export interface ScanRecord {
   critique_text: string;
   building_address: string | null;
   captured_at: string;
+  tags?: string[] | null;
+  saved?: boolean;
 }

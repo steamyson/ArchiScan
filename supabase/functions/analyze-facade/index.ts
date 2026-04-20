@@ -235,31 +235,51 @@ Deno.serve(async (req) => {
     const arrayBuffer = await imageData.arrayBuffer();
     const base64Image = arrayBufferToBase64(arrayBuffer);
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: SYSTEM_PROMPT },
-                { inline_data: { mime_type: "image/jpeg", data: base64Image } },
-              ],
-            },
+    const geminiPayload = JSON.stringify({
+      contents: [
+        {
+          parts: [
+            { text: SYSTEM_PROMPT },
+            { inline_data: { mime_type: "image/jpeg", data: base64Image } },
           ],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 8192,
-          },
-        }),
+        },
+      ],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 8192,
       },
-    );
+    });
+
+    const GEMINI_MODELS = [
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
+    ];
+    const RETRIES_PER_MODEL = 2;
+
+    let geminiRes!: Response;
+    let lastErrText = "";
+    modelLoop:
+    for (const model of GEMINI_MODELS) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+      for (let attempt = 0; attempt < RETRIES_PER_MODEL; attempt++) {
+        geminiRes = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: geminiPayload,
+        });
+        if (geminiRes.ok) break modelLoop;
+        if (geminiRes.status !== 429 && geminiRes.status !== 503) break modelLoop;
+        lastErrText = await geminiRes.text();
+        if (attempt < RETRIES_PER_MODEL - 1) {
+          await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
+        }
+      }
+    }
 
     if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      return new Response(JSON.stringify({ error: `Gemini API error: ${errText}` }), {
+      if (!lastErrText) lastErrText = await geminiRes.text();
+      return new Response(JSON.stringify({ error: `Gemini API error: ${lastErrText}` }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -293,6 +313,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    const elementsWithConfidence = analysis.elements.filter(
+      (e): e is { confidence?: string } => typeof e === "object" && e !== null,
+    );
+    const lowCount = elementsWithConfidence.filter((e) => e.confidence === "low").length;
+    const visibilityNote =
+      elementsWithConfidence.length > 0 && lowCount > elementsWithConfidence.length * 0.6
+        ? "Limited visibility affected this reading. Results may be less precise than usual."
+        : null;
+
     const { data: scanId, error: rpcError } = await supabase.rpc("create_scan_from_analysis", {
       p_user_id: userId,
       p_image_url: imagePath,
@@ -317,6 +346,7 @@ Deno.serve(async (req) => {
         scanId,
         analysis,
         building_address: address ?? null,
+        visibility_note: visibilityNote,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

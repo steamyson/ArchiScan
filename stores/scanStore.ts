@@ -7,6 +7,7 @@ interface ScanState {
   localPhotoUri: string | null;
   storagePath: string | null;
   buildingAddress: string | null;
+  visibilityNote: string | null;
 
   setResult: (payload: {
     scanId: string;
@@ -14,6 +15,7 @@ interface ScanState {
     localPhotoUri: string;
     storagePath: string;
     buildingAddress: string | null;
+    visibilityNote: string | null;
   }) => void;
   clear: () => void;
 }
@@ -24,11 +26,12 @@ const initialState = {
   localPhotoUri: null,
   storagePath: null,
   buildingAddress: null,
+  visibilityNote: null,
 };
 
 export const useScanStore = create<ScanState>((set) => ({
   ...initialState,
-  setResult: ({ scanId, analysis, localPhotoUri, storagePath, buildingAddress }) =>
-    set({ scanId, analysis, localPhotoUri, storagePath, buildingAddress }),
+  setResult: ({ scanId, analysis, localPhotoUri, storagePath, buildingAddress, visibilityNote }) =>
+    set({ scanId, analysis, localPhotoUri, storagePath, buildingAddress, visibilityNote }),
   clear: () => set(initialState),
 }));

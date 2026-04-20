@@ -29,6 +29,9 @@ export function getUserFriendlyMessage(err: unknown): string {
     if (msg.includes("image download failed")) {
       return "The photo uploaded but the server could not load it. Try again.";
     }
+    if (msg.includes("503") || msg.includes("unavailable") || msg.includes("high demand")) {
+      return "The AI is a bit busy right now. Wait a few seconds and try again.";
+    }
     if (msg.includes("gemini api error") || msg.includes("gemini")) {
       return "The AI service returned an error. Try again in a moment.";
     }

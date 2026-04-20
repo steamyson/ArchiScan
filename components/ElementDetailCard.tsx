@@ -102,26 +102,38 @@ export function ElementDetailCard({ element, onDismiss }: Props) {
           </YStack>
 
           <YStack px="$5" gap="$3" flex={1}>
-            <XStack ai="center" jc="space-between" gap="$3">
-              <Text fos={20} fontWeight="700" color="$color" flex={1} numberOfLines={2}>
-                {displayed.name}
-              </Text>
-              <Text fos={11} fontWeight="600" color={color} tt="uppercase" ls={1.2}>
+            {/* Hierarchy tag */}
+            <XStack ai="center" gap="$2">
+              <YStack width={8} height={8} borderRadius={1} backgroundColor={color} />
+              <Text fos={9} fontWeight="700" color={color} tt="uppercase" ls={1.5}>
                 {hierarchyLabel}
               </Text>
             </XStack>
 
+            {/* Element name */}
+            <Text style={{ fontFamily: "CormorantGaramond_400Regular", fontSize: 26, color: "#f0ede8", lineHeight: 30 }} numberOfLines={2}>
+              {displayed.name}
+            </Text>
+
             <Separator borderColor="$borderColor" />
 
-            <Text fos={14} lh={22} color="$colorMuted">
+            {/* Definition */}
+            <Text style={{ fontFamily: "CormorantGaramond_400Regular_Italic", fontSize: 16, color: "#c8c4be", lineHeight: 28 }} flex={1}>
               {displayed.definition}
             </Text>
 
-            <XStack ai="center" gap="$2" mt="$2">
-              <Text fos={12} color="$colorMuted">
-                Confidence:
-              </Text>
-              <Text fos={12} fontWeight="600" color={confidenceHex}>
+            {/* Confidence */}
+            <XStack ai="center" gap="$2" mt="$1">
+              <Text fos={10} color="$colorMuted" tt="uppercase" ls={0.8}>Confidence</Text>
+              <YStack flex={1} height={3} backgroundColor="$backgroundFocus" borderRadius={2} overflow="hidden">
+                <YStack
+                  height="100%"
+                  width={displayed.confidence === "high" ? "100%" : displayed.confidence === "medium" ? "60%" : "25%"}
+                  backgroundColor={confidenceHex}
+                  borderRadius={2}
+                />
+              </YStack>
+              <Text fos={10} fontWeight="600" color={confidenceHex} tt="uppercase" ls={0.8}>
                 {titleCase(displayed.confidence)}
               </Text>
             </XStack>

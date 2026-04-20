@@ -10,7 +10,7 @@ import Animated, {
 import Svg, { Circle, G, Line } from "react-native-svg";
 import { YStack } from "tamagui";
 import type { ArchitecturalElement } from "../types/scan";
-import { HIERARCHY_COLORS, type LabelPosition } from "../lib/overlayLayout";
+import { HIERARCHY_COLORS, OVERLAY_LINE_OPACITY, OVERLAY_STROKE_WIDTH, type LabelPosition } from "../lib/overlayLayout";
 import { ElementLabel } from "./ElementLabel";
 
 const AnimatedG = Animated.createAnimatedComponent(G);
@@ -53,8 +53,8 @@ function LeaderLineSegment({ position, labelX, delay }: SegmentProps) {
         x2={position.leaderEndX}
         y2={position.leaderEndY}
         stroke={color}
-        strokeWidth={0.8}
-        opacity={0.7}
+        strokeWidth={OVERLAY_STROKE_WIDTH}
+        opacity={OVERLAY_LINE_OPACITY}
       />
       <Circle
         cx={position.leaderEndX}
@@ -99,7 +99,7 @@ export function LeaderLineOverlay({ positions, containerWidth, onLabelPress }: P
             },
           ]}
         >
-          <ElementLabel element={pos.element} onPress={() => onLabelPress(pos.element)} />
+          <ElementLabel element={pos.element} side={pos.side} onPress={() => onLabelPress(pos.element)} />
         </Animated.View>
       ))}
     </YStack>

@@ -4,19 +4,22 @@ import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
-import { YStack, Text, Button } from "tamagui";
+import { XStack, YStack, Text, Button } from "tamagui";
 import { AnalyzingOverlay } from "../../components/AnalyzingOverlay";
 import { CameraView } from "../../components/CameraView";
-import { analyzeFacade } from "../../lib/analysis";
+import { NotAFacadeError } from "../../components/NotAFacadeError";
+import NetInfo from "@react-native-community/netinfo";
+import { analyzeFacade, NotAFacadeError as NotAFacadeErrorType } from "../../lib/analysis";
 import { getUserFriendlyMessage } from "../../lib/errorMessages";
 import { logError } from "../../lib/logger";
 import { captureLocation } from "../../lib/location";
 import { reverseGeocode } from "../../lib/geocoding";
+import { enqueue as enqueueScan } from "../../lib/offlineQueue";
 import { uploadFacadePhoto, type PhotoOrientation } from "../../lib/storage";
 import { useAuthStore } from "../../stores/authStore";
 import { useScanStore } from "../../stores/scanStore";
 
-type ScanPhase = "camera" | "uploading" | "analyzing" | "error";
+type ScanPhase = "camera" | "uploading" | "analyzing" | "error" | "not_a_facade";
 
 export default function ScanScreen() {
   const router = useRouter();
@@ -26,6 +29,7 @@ export default function ScanScreen() {
   const [phase, setPhase] = useState<ScanPhase>("camera");
   const [errorTitle, setErrorTitle] = useState<string>("Couldn't upload photo");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [notAFacadeMessage, setNotAFacadeMessage] = useState<string | null>(null);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,7 +73,7 @@ export default function ScanScreen() {
         if (session?.user?.id) {
           setPhase("analyzing");
           try {
-            const { scanId, analysis, cached } = await analyzeFacade({
+            const { scanId, analysis, cached, visibilityNote } = await analyzeFacade({
               imagePath: storagePath,
               userId: session.user.id,
               location: coords,
@@ -84,11 +88,33 @@ export default function ScanScreen() {
               localPhotoUri: localCorrectedUri,
               storagePath,
               buildingAddress: address ? address : null,
+              visibilityNote,
             });
             setPhase("camera");
             router.push("/overlay");
             return;
           } catch (analyzeErr) {
+            if (analyzeErr instanceof NotAFacadeErrorType) {
+              setNotAFacadeMessage(analyzeErr.message);
+              setPhase("not_a_facade");
+              return;
+            }
+            const net = await NetInfo.fetch();
+            if (!net.isConnected) {
+              try {
+                await enqueueScan({
+                  imagePath: storagePath,
+                  userId: session.user.id,
+                  location: coords,
+                  address,
+                });
+                setUploadNotice("Offline — scan queued. We'll analyze it when you're back online.");
+                setPhase("camera");
+                return;
+              } catch (queueErr) {
+                logError("enqueueScan", queueErr);
+              }
+            }
             logError("analyzeFacade", analyzeErr);
             setErrorTitle("Couldn't analyze photo");
             setErrorMessage(getUserFriendlyMessage(analyzeErr));
@@ -116,9 +142,45 @@ export default function ScanScreen() {
     setPhase("camera");
   }, []);
 
+  const dismissNotAFacade = useCallback(() => {
+    setNotAFacadeMessage(null);
+    setPhase("camera");
+  }, []);
+
   return (
     <YStack flex={1} backgroundColor="$background">
       <CameraView onCapture={onPhotoCaptured} onCaptureError={onCaptureError} isCapturing={phase === "uploading" || phase === "analyzing"} />
+
+      {/* Top HUD — FACADELENS brand + GPS badge */}
+      {phase === "camera" && (
+        <XStack
+          position="absolute"
+          top={insets.top + 10}
+          left={0}
+          right={0}
+          paddingHorizontal="$5"
+          ai="center"
+          jc="space-between"
+          pointerEvents="none"
+        >
+          <Text style={{ fontFamily: "BebasNeue_400Regular", fontSize: 22, color: "#c8a96e", letterSpacing: 4 }}>
+            FACADELENS
+          </Text>
+          <XStack
+            bg="rgba(10,10,10,0.85)"
+            borderColor="#2a2a2a"
+            borderWidth={1}
+            borderRadius={6}
+            px="$2"
+            py="$1"
+            ai="center"
+            gap="$1"
+          >
+            <YStack width={5} height={5} borderRadius={3} backgroundColor="#6bc96e" />
+            <Text fos={10} color="$colorMuted">GPS Active</Text>
+          </XStack>
+        </XStack>
+      )}
 
       {uploadNotice ? (
         <YStack
@@ -188,6 +250,12 @@ export default function ScanScreen() {
           pointerEvents="auto"
         >
           <AnalyzingOverlay />
+        </Animated.View>
+      ) : null}
+
+      {phase === "not_a_facade" ? (
+        <Animated.View entering={FadeIn.duration(200)} style={[StyleSheet.absoluteFill, styles.uploadOverlay]} pointerEvents="auto">
+          <NotAFacadeError onRetry={dismissNotAFacade} message={notAFacadeMessage ?? undefined} />
         </Animated.View>
       ) : null}
 

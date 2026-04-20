@@ -2,12 +2,34 @@ import 'react-native-gesture-handler';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
-import { TamaguiProvider } from 'tamagui';
+import { TamaguiProvider, PortalProvider } from 'tamagui';
+import NetInfo from '@react-native-community/netinfo';
+import { useFonts } from 'expo-font';
+import {
+  CormorantGaramond_300Light,
+  CormorantGaramond_300Light_Italic,
+  CormorantGaramond_400Regular,
+  CormorantGaramond_400Regular_Italic,
+  CormorantGaramond_500Medium,
+  CormorantGaramond_500Medium_Italic,
+} from '@expo-google-fonts/cormorant-garamond';
+import { BebasNeue_400Regular } from '@expo-google-fonts/bebas-neue';
 import tamaguiConfig from '../tamagui.config';
 import { useAuthStore } from '../stores/authStore';
 import { supabase } from '../lib/supabase';
+import { processQueue } from '../lib/offlineQueue';
+import { logError } from '../lib/logger';
 
 export default function RootLayout() {
+  useFonts({
+    CormorantGaramond_300Light,
+    CormorantGaramond_300Light_Italic,
+    CormorantGaramond_400Regular,
+    CormorantGaramond_400Regular_Italic,
+    CormorantGaramond_500Medium,
+    CormorantGaramond_500Medium_Italic,
+    BebasNeue_400Regular,
+  });
   const setSession = useAuthStore((s) => s.setSession);
   const setHasHydrated = useAuthStore((s) => s.setHasHydrated);
 
@@ -33,10 +55,21 @@ export default function RootLayout() {
     };
   }, [setHasHydrated, setSession]);
 
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (state.isConnected) {
+        void processQueue().catch((err) => logError('RootLayout.processQueue', err));
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
-        <Stack screenOptions={{ headerShown: false }} />
+        <PortalProvider shouldAddRootHost>
+          <Stack screenOptions={{ headerShown: false }} />
+        </PortalProvider>
       </TamaguiProvider>
     </GestureHandlerRootView>
   );

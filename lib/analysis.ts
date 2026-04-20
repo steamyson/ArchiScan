@@ -13,6 +13,7 @@ interface AnalyzeSuccessResponse {
   analysis: AnalysisResult;
   cached?: boolean;
   building_address?: string | null;
+  visibility_note?: string | null;
 }
 
 interface AnalyzeNotFacadeResponse {
@@ -91,7 +92,7 @@ export async function analyzeFacade(params: {
   userId: string;
   location: { lat: number; lng: number } | null;
   address: string;
-}): Promise<{ scanId: string; analysis: AnalysisResult; cached?: boolean }> {
+}): Promise<{ scanId: string; analysis: AnalysisResult; cached?: boolean; visibilityNote: string | null }> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -138,5 +139,6 @@ export async function analyzeFacade(params: {
     scanId: data.scanId,
     analysis: data.analysis as AnalysisResult,
     cached: data.cached,
+    visibilityNote: data.visibility_note ?? null,
   };
 }

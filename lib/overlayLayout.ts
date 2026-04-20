@@ -10,9 +10,12 @@ export interface LabelPosition {
 
 export const HIERARCHY_COLORS: Record<ElementHierarchy, string> = {
   primary_structure: "#c8a96e",
-  secondary_cladding: "#7eb8c4",
-  ornamental_detail: "#b87db8",
+  secondary_cladding: "#b89264",
+  ornamental_detail: "#8a7455",
 };
+
+export const OVERLAY_LINE_OPACITY = 0.55;
+export const OVERLAY_STROKE_WIDTH = 0.9;
 
 export const HIERARCHY_LABELS: Record<ElementHierarchy, string> = {
   primary_structure: "Structure",
