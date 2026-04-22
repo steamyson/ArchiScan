@@ -4,14 +4,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { YStack, XStack, Text, Button } from "tamagui";
 import { BookBookmark, Funnel, GridFour, List, Buildings } from "phosphor-react-native";
 import { useHerbariumScans } from "../../hooks/useHerbariumScans";
-import { useSampleFacadePhoto } from "../../hooks/useSampleFacadePhoto";
 import { useHerbariumStore } from "../../stores/herbariumStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useScanStore } from "../../stores/scanStore";
+import { getSamplePhotoCached } from "../../lib/samplePhotoCache";
 import { HerbariumGrid } from "../../components/HerbariumGrid";
 import { FilterSheet } from "../../components/FilterSheet";
 import { FullScreenError } from "../../components/shared/FullScreenError";
-import type { ScanRecord } from "../../types/scan";
+import { logError } from "../../lib/logger";
+import type { AnalysisResult, ScanRecord } from "../../types/scan";
+
+const SAMPLE_ANALYSIS: AnalysisResult = require("../../assets/sample-scan.json");
 
 export default function HerbariumScreen() {
   const router = useRouter();
@@ -21,9 +24,10 @@ export default function HerbariumScreen() {
   const setViewMode = useHerbariumStore((s) => s.setViewMode);
   const filters = useHerbariumStore((s) => s.filters);
   const { scans, signedUrls, loading, error, refetch } = useHerbariumScans();
-  const { photo, analysis, loading: sampleLoading } = useSampleFacadePhoto();
   const setResult = useScanStore((s) => s.setResult);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [sampleLoading, setSampleLoading] = useState(false);
+  const [sampleError, setSampleError] = useState<string | null>(null);
 
   if (!session) {
     return (
@@ -47,21 +51,30 @@ export default function HerbariumScreen() {
   const hasActiveFilters =
     Boolean(filters.style || filters.tag || filters.searchQuery || filters.dateFrom || filters.dateTo);
 
-  const handleViewSample = () => {
-    if (!photo) return;
-    setResult({
-      scanId: null,
-      analysis,
-      localPhotoUri: photo.localUri,
-      storagePath: null,
-      buildingAddress: "Brooklyn, New York",
-      visibilityNote: null,
-      sampleAttribution: {
-        photographerName: photo.photographerName,
-        photographerUrl: photo.photographerUrl,
-      },
-    });
-    router.push("/overlay");
+  const handleViewSample = async () => {
+    setSampleLoading(true);
+    setSampleError(null);
+    try {
+      const photo = await getSamplePhotoCached();
+      setResult({
+        scanId: null,
+        analysis: SAMPLE_ANALYSIS,
+        localPhotoUri: photo.localUri,
+        storagePath: null,
+        buildingAddress: "Brooklyn, New York",
+        visibilityNote: null,
+        sampleAttribution: {
+          photographerName: photo.photographerName,
+          photographerUrl: photo.photographerUrl,
+        },
+      });
+      router.push("/overlay");
+    } catch (err) {
+      logError("handleViewSample", err);
+      setSampleError("Could not load sample. Check your connection.");
+    } finally {
+      setSampleLoading(false);
+    }
   };
 
   if (!loading && scans.length === 0 && !hasActiveFilters) {
@@ -79,7 +92,7 @@ export default function HerbariumScreen() {
         </YStack>
         <Button
           onPress={handleViewSample}
-          disabled={sampleLoading || !photo}
+          disabled={sampleLoading}
           bg="$backgroundStrong"
           borderWidth={1}
           borderColor="$borderColor"
@@ -89,9 +102,12 @@ export default function HerbariumScreen() {
           icon={<BookBookmark size={18} color="#c8a96e" weight="regular" />}
         >
           <Text color="$color" fos={14} fontWeight="600">
-            {sampleLoading ? "Loading sample…" : "View Sample Scan"}
+            {sampleLoading ? "Loading…" : "View Sample Scan"}
           </Text>
         </Button>
+        {sampleError ? (
+          <Text fos={12} color="#c96e6e" ta="center">{sampleError}</Text>
+        ) : null}
       </YStack>
     );
   }
