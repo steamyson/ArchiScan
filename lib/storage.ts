@@ -7,8 +7,11 @@ import { supabase } from './supabase';
 /** Same as VisionCamera `Photo.orientation` — re-exported for callers. */
 export type PhotoOrientation = Orientation;
 
-/** Clockwise `expo-image-manipulator` rotation to bake `Photo.orientation` into pixels (RN Image ignores EXIF). */
-function rotationCorrectionDegrees(orientation: Orientation): number {
+/**
+ * Clockwise rotation (degrees) to display or bake pixel data upright for a VisionCamera `Photo.orientation`.
+ * Used for preview (`Image` transform) and for `expo-image-manipulator` before upload (RN `Image` ignores EXIF).
+ */
+export function clockwiseDegreesForPhotoOrientation(orientation: Orientation): number {
   switch (orientation) {
     case 'up':
       return 0;
@@ -54,7 +57,7 @@ export async function uploadFacadePhoto(
 ): Promise<UploadedPhoto> {
   const uploadStart = __DEV__ ? globalThis.performance.now() : 0;
   const uri = toFileUri(localPath);
-  const rotation = rotationCorrectionDegrees(orientation);
+  const rotation = clockwiseDegreesForPhotoOrientation(orientation);
   const actions: Action[] = [];
   if (rotation !== 0) {
     actions.push({ rotate: rotation });

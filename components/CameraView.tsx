@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import {
   Camera,
@@ -10,10 +10,10 @@ import {
 import type { CameraRef } from 'react-native-vision-camera/lib/views/Camera';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
-import { YStack, Text, Button } from 'tamagui';
+import { XStack, YStack, Text, Button } from 'tamagui';
 import { FocusRing } from './FocusRing';
 import { CaptureButton } from './CaptureButton';
-import type { PhotoOrientation } from '../lib/storage';
+import { clockwiseDegreesForPhotoOrientation, type PhotoOrientation } from '../lib/storage';
 
 type CameraViewProps = {
   onCapture: (payload: { path: string; orientation: PhotoOrientation }) => void;
@@ -29,6 +29,7 @@ export function CameraView({ onCapture, onCaptureError, isCapturing }: CameraVie
   const { hasPermission, requestPermission } = useCameraPermission();
   const cameraRef = useRef<CameraRef>(null);
   const [sessionStarted, setSessionStarted] = useState(false);
+  const [capturedPhoto, setCapturedPhoto] = useState<{ path: string; orientation: PhotoOrientation } | null>(null);
 
   const focusX = useSharedValue(0);
   const focusY = useSharedValue(0);
@@ -61,13 +62,13 @@ export function CameraView({ onCapture, onCaptureError, isCapturing }: CameraVie
     try {
       const photo = await photoOutput.capturePhoto({ flashMode: 'off', enableShutterSound: false }, {});
       const path = await photo.saveToTemporaryFileAsync();
-      onCapture({ path, orientation: photo.orientation });
+      setCapturedPhoto({ path, orientation: photo.orientation });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Photo capture failed';
       console.warn('[M1] photo capture error', e);
       onCaptureError?.(msg);
     }
-  }, [isFocused, onCapture, onCaptureError, photoOutput, sessionStarted]);
+  }, [isFocused, onCaptureError, photoOutput, sessionStarted]);
 
   if (!hasPermission) {
     return (
@@ -86,6 +87,49 @@ export function CameraView({ onCapture, onCaptureError, isCapturing }: CameraVie
 
   if (!device) {
     return <YStack flex={1} bg="$background" />;
+  }
+
+  if (capturedPhoto) {
+    return (
+      <View style={StyleSheet.absoluteFill}>
+        <Image
+          source={{ uri: `file://${capturedPhoto.path}` }}
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              transform: [
+                { rotate: `${clockwiseDegreesForPhotoOrientation(capturedPhoto.orientation)}deg` },
+              ],
+            },
+          ]}
+          resizeMode="cover"
+        />
+        <XStack
+          position="absolute"
+          bottom={48}
+          left={24}
+          right={24}
+          gap="$3"
+        >
+          <Button
+            flex={1}
+            backgroundColor="rgba(30,30,30,0.85)"
+            borderColor="rgba(255,255,255,0.15)"
+            borderWidth={1}
+            onPress={() => setCapturedPhoto(null)}
+          >
+            <Text color="#ffffff" fontWeight="600">Retake</Text>
+          </Button>
+          <Button
+            flex={1}
+            backgroundColor="#c8a96e"
+            onPress={() => onCapture(capturedPhoto)}
+          >
+            <Text color="#0a0a0a" fontWeight="700">Continue</Text>
+          </Button>
+        </XStack>
+      </View>
+    );
   }
 
   return (

@@ -15,23 +15,29 @@ function toLatLng(location: Location.LocationObject): LatLng {
  * devices it reports false while fused / network location still works.
  */
 async function resolveCoordinates(): Promise<Location.LocationObject | null> {
+  const timeout = new Promise<null>((res) => setTimeout(() => res(null), 3000));
+  let fresh: Location.LocationObject | null = null;
   try {
-    return await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-      mayShowUserSettingsDialog: true,
-    });
+    fresh = await Promise.race([
+      Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        mayShowUserSettingsDialog: true,
+      }),
+      timeout,
+    ]);
   } catch (e) {
     if (__DEV__) {
       console.warn('[location] getCurrentPosition Balanced failed', e);
     }
   }
+  if (fresh) return fresh;
+  if (__DEV__) {
+    console.warn('[location] GPS timed out or failed — falling back to last-known');
+  }
   const last = await Location.getLastKnownPositionAsync({
     maxAge: 60 * 60 * 1000,
     requiredAccuracy: 10_000,
   });
-  if (last && __DEV__) {
-    console.warn('[location] using last-known position (may be stale)');
-  }
   return last;
 }
 
