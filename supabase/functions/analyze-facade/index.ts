@@ -145,6 +145,8 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const startTime = performance.now();
+
     const geminiKey = Deno.env.get("GEMINI_API_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -337,6 +339,8 @@ Deno.serve(async (req) => {
       });
     }
 
+    const geminiDurationMs = Math.round(performance.now() - startTime);
+
     const geminiData = (await geminiRes.json()) as {
       candidates?: { content?: { parts?: { text?: string }[] } }[];
     };
@@ -372,6 +376,18 @@ Deno.serve(async (req) => {
     const overallConfidence = total > 0
       ? Math.round(((highCount * 1.0 + medCount * 0.5) / total) * 100) / 100
       : null;
+
+    const estInputTokens = Math.ceil(base64Image.length / 3);
+    const estOutputTokens = Math.ceil(rawText.length / 4);
+    const estCostUsd = (estInputTokens * 0.075 + estOutputTokens * 0.30) / 1_000_000;
+    const estCostCents = Math.round(estCostUsd * 100);
+
+    console.log("[METRIC] gemini_analysis_duration_ms", geminiDurationMs);
+    console.log("[METRIC] gemini_model_used", modelUsed);
+    console.log("[METRIC] analysis_element_count", total);
+    console.log("[METRIC] analysis_overall_confidence", overallConfidence);
+    console.log("[METRIC] is_not_a_facade", isNotAFacade(analysis));
+    console.log("[METRIC] gemini_estimated_cost_cents", estCostCents);
 
     if (isNotAFacade(analysis)) {
       return new Response(
@@ -423,6 +439,8 @@ Deno.serve(async (req) => {
         promptVersion: GEMINI_PROMPT_VERSION,
         modelUsed,
         overallConfidence,
+        durationMs: geminiDurationMs,
+        estimatedCostCents: estCostCents,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
