@@ -36,7 +36,7 @@ export default function OverlayScreen() {
   // Sheet slides in after element labels have staggered
   useEffect(() => {
     if (!analysis) return;
-    const delay = analysis.elements.length * 80 + 1400;
+    const delay = analysis.elements.length * 40 + 800;
     const t = setTimeout(() => setSheetVisible(true), delay);
     return () => clearTimeout(t);
   }, [analysis]);
@@ -48,14 +48,6 @@ export default function OverlayScreen() {
   if (view === "critique") {
     return (
       <View style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
-        <Pressable
-          onPress={() => setView("overlay")}
-          style={[styles.backBtn, { top: insets.top + 8, left: 12 }]}
-          hitSlop={12}
-        >
-          <Text style={styles.backArrow}>←</Text>
-        </Pressable>
-
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: insets.bottom + 32, paddingTop: insets.top + 52 }}
@@ -75,6 +67,14 @@ export default function OverlayScreen() {
             <SaveButton scanId={scanId} />
           </View>
         </ScrollView>
+
+        <Pressable
+          onPress={() => setView("overlay")}
+          style={[styles.backBtn, { top: insets.top + 8, left: 12 }]}
+          hitSlop={12}
+        >
+          <Text style={styles.backArrow}>←</Text>
+        </Pressable>
       </View>
     );
   }
@@ -126,6 +126,7 @@ export default function OverlayScreen() {
             visible={sheetVisible}
             summary={analysis.building_summary}
             address={buildingAddress}
+            scanId={scanId}
             onReadCritique={() => setView("critique")}
             bottomOffset={TAB_BAR_HEIGHT}
           />

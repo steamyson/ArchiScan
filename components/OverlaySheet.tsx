@@ -9,6 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import type { BuildingSummary } from "../types/scan";
+import { SaveButton } from "./SaveButton";
 
 const SHEET_H = 296;
 const PEEK_H = 62;
@@ -20,12 +21,13 @@ interface Props {
   visible: boolean;
   summary: BuildingSummary;
   address?: string | null;
+  scanId: string | null;
   onReadCritique: () => void;
   /** Distance from bottom to sit above the tab bar */
   bottomOffset?: number;
 }
 
-export function OverlaySheet({ visible, summary, address, onReadCritique, bottomOffset = 76 }: Props) {
+export function OverlaySheet({ visible, summary, address, scanId, onReadCritique, bottomOffset = 76 }: Props) {
   const translateY = useSharedValue(SHEET_H);
   const [snapState, setSnapState] = useState<"open" | "peek">("open");
 
@@ -117,6 +119,11 @@ export function OverlaySheet({ visible, summary, address, onReadCritique, bottom
                 <Text style={[styles.pillValue, { color: p.color }]}>{p.value}</Text>
               </View>
             ))}
+          </View>
+
+          {/* Save */}
+          <View style={styles.saveRow}>
+            <SaveButton scanId={scanId} />
           </View>
 
           {/* CTA */}
@@ -245,6 +252,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "600",
     marginTop: 1,
+  },
+  saveRow: {
+    marginBottom: 10,
   },
   cta: {
     backgroundColor: "#c8a96e",
