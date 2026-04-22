@@ -7,6 +7,8 @@ import { OverlaySheet } from "../components/OverlaySheet";
 import { CritiqueScreen, CritiqueUnavailable } from "../components/CritiqueScreen";
 import { SaveButton } from "../components/SaveButton";
 import { VisibilityNote } from "../components/VisibilityNote";
+import { getSignedUrl } from "../lib/herbarium";
+import { logError } from "../lib/logger";
 import { useScanStore } from "../stores/scanStore";
 
 const TAB_BAR_HEIGHT = 76;
@@ -18,21 +20,43 @@ export default function OverlayScreen() {
   const insets = useSafeAreaInsets();
   const analysis = useScanStore((s) => s.analysis);
   const localPhotoUri = useScanStore((s) => s.localPhotoUri);
+  const storagePath = useScanStore((s) => s.storagePath);
   const buildingAddress = useScanStore((s) => s.buildingAddress);
   const scanId = useScanStore((s) => s.scanId);
   const visibilityNote = useScanStore((s) => s.visibilityNote);
   const sampleAttribution = useScanStore((s) => s.sampleAttribution);
   const [view, setView] = useState<OverlayView>("overlay");
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [signedImageUri, setSignedImageUri] = useState<string | null>(null);
 
   const handleDismiss = () => {
-    if (router.canGoBack()) router.back();
-    else router.replace("/(tabs)/scan");
+    router.replace("/(tabs)/scan");
   };
 
   useEffect(() => {
-    if (!analysis || !localPhotoUri) handleDismiss();
-  }, [analysis, localPhotoUri]);
+    const hasImageSource = Boolean(localPhotoUri) || Boolean(storagePath);
+    if (!analysis || !hasImageSource) handleDismiss();
+  }, [analysis, localPhotoUri, storagePath]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!storagePath) {
+      setSignedImageUri(null);
+      return;
+    }
+    void getSignedUrl(storagePath)
+      .then((url) => {
+        if (!cancelled) {
+          setSignedImageUri(url);
+        }
+      })
+      .catch((err) => {
+        logError("OverlayScreen.getSignedUrl", err, { storagePath });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [storagePath]);
 
   // Sheet slides in after element labels have staggered
   useEffect(() => {
@@ -42,7 +66,9 @@ export default function OverlayScreen() {
     return () => clearTimeout(t);
   }, [analysis]);
 
-  if (!analysis || !localPhotoUri) {
+  const imageUri = signedImageUri ?? localPhotoUri;
+
+  if (!analysis || !imageUri) {
     return <View style={{ flex: 1, backgroundColor: "#0a0a0a" }} />;
   }
 
@@ -95,12 +121,12 @@ export default function OverlayScreen() {
     <View style={{ flex: 1, backgroundColor: "#0a0a0a" }}>
       {/* Full-bleed canvas */}
       <View style={StyleSheet.absoluteFill}>
-        <OverlayCanvas elements={analysis.elements} imageUri={localPhotoUri} />
+        <OverlayCanvas elements={analysis.elements} imageUri={imageUri} />
       </View>
 
       {/* Top bar */}
       <View style={[styles.topBar, { top: insets.top + 8 }]} pointerEvents="box-none">
-        <Pressable onPress={handleDismiss} style={styles.backBtn} hitSlop={12}>
+        <Pressable onPress={handleDismiss} style={styles.backBtn} hitSlop={12} pointerEvents="auto">
           <Text style={styles.backArrow}>←</Text>
         </Pressable>
         {buildingAddress ? (
@@ -157,7 +183,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
-    zIndex: 10,
+    zIndex: 30,
+    elevation: 30,
   },
   backBtn: {
     position: "absolute",
@@ -169,6 +196,8 @@ const styles = StyleSheet.create({
     borderColor: "#2a2a2a",
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 31,
+    elevation: 31,
   },
   backArrow: {
     fontSize: 18,

@@ -17,16 +17,22 @@ import { BebasNeue_400Regular } from '@expo-google-fonts/bebas-neue';
 import tamaguiConfig from '../tamagui.config';
 import { useAuthStore } from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
+import { usePreferencesStore } from '../stores/preferencesStore';
 import { supabase } from '../lib/supabase';
 import { processQueue } from '../lib/offlineQueue';
 import { logError } from '../lib/logger';
 
 export default function RootLayout() {
   const { colorScheme, init } = useThemeStore();
+  const { init: initPrefs } = usePreferencesStore();
 
   useEffect(() => {
     void init();
   }, [init]);
+
+  useEffect(() => {
+    void initPrefs();
+  }, [initPrefs]);
 
   useFonts({
     CormorantGaramond_300Light,

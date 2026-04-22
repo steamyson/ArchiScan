@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { YStack, XStack, Text, Button, Switch } from 'tamagui';
+import { MapPin, BookOpen, CircleIcon } from 'phosphor-react-native';
 import { signOut } from '../../lib/auth';
 import { logError } from '../../lib/logger';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
+import { usePreferencesStore } from '../../stores/preferencesStore';
 
 export default function ProfileScreen() {
   const session = useAuthStore((s) => s.session);
   const { colorScheme, toggleColorScheme } = useThemeStore();
+  const overlayMode = usePreferencesStore((s) => s.overlayMode);
+  const setOverlayMode = usePreferencesStore((s) => s.setOverlayMode);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [scanCount, setScanCount] = useState<number | null>(null);
@@ -78,6 +83,69 @@ export default function ProfileScreen() {
           {scanCount ?? '—'}
         </Text>
       </YStack>
+      <YStack gap="$2">
+        <Text fos={13} fw="700" color="#c8a96e" tt="uppercase" ls={1.2}>
+          Overlay Style
+        </Text>
+        <Text fos={13} color="$colorMuted" mb="$2">
+          How architectural elements are shown when you scan a building.
+        </Text>
+
+        <Pressable onPress={() => setOverlayMode('markers')}>
+          <XStack
+            bg="$backgroundStrong"
+            br="$4"
+            borderWidth={1}
+            borderColor={overlayMode === 'markers' ? '#c8a96e' : '$borderColor'}
+            p="$4"
+            gap="$3"
+            ai="center"
+          >
+            <MapPin
+              size={20}
+              color={overlayMode === 'markers' ? '#c8a96e' : '#888880'}
+              weight={overlayMode === 'markers' ? 'fill' : 'regular'}
+            />
+            <YStack flex={1} gap="$1">
+              <Text fos={15} color="$color" fw="600">Markers</Text>
+              <Text fos={13} color="$colorMuted">
+                Colored dots on each feature. Tap to learn more.
+              </Text>
+            </YStack>
+            {overlayMode === 'markers' && (
+              <CircleIcon size={8} color="#c8a96e" weight="fill" />
+            )}
+          </XStack>
+        </Pressable>
+
+        <Pressable onPress={() => setOverlayMode('diagram')}>
+          <XStack
+            bg="$backgroundStrong"
+            br="$4"
+            borderWidth={1}
+            borderColor={overlayMode === 'diagram' ? '#c8a96e' : '$borderColor'}
+            p="$4"
+            gap="$3"
+            ai="center"
+          >
+            <BookOpen
+              size={20}
+              color={overlayMode === 'diagram' ? '#c8a96e' : '#888880'}
+              weight={overlayMode === 'diagram' ? 'fill' : 'regular'}
+            />
+            <YStack flex={1} gap="$1">
+              <Text fos={15} color="$color" fw="600">Diagram</Text>
+              <Text fos={13} color="$colorMuted">
+                Labeled annotations with lines to each feature.
+              </Text>
+            </YStack>
+            {overlayMode === 'diagram' && (
+              <CircleIcon size={8} color="#c8a96e" weight="fill" />
+            )}
+          </XStack>
+        </Pressable>
+      </YStack>
+
       <XStack justifyContent="space-between" alignItems="center" paddingVertical="$3">
         <Text fontSize={15} color="$color">Light mode</Text>
         <Switch

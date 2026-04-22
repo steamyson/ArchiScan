@@ -1,6 +1,6 @@
 # FacadeLens — Prompt Engineering
 
-**Version:** 0.2 (April 2026 — addresses markdown bleed, glass-facade density, confidence inflation, critique specificity)
+**Version:** 0.3 (April 2026 — tight bounding boxes, centroid guidance, repeated-element separation)
 **Purpose:** Version, test, and iterate the Gemini vision prompt. The AI prompt is the core product feature — treat it as first-class code with its own changelog, test matrix, and scoring rubric.
 
 ---
@@ -17,7 +17,7 @@ The structured system prompt that drives element identification and critique gen
 
 ---
 
-## Current Prompt (v0.2)
+## Current Prompt (v0.3)
 
 ```
 You are an architectural analysis engine. Analyze this building facade photograph and return ONLY a valid JSON object with no additional text, no markdown formatting, no code fences.
@@ -53,9 +53,26 @@ The JSON must follow this exact schema:
   }
 }
 
-Rules for bounding_box: Values are percentages of total image dimensions. 0,0 is the top-left corner. x_min_pct and x_max_pct are horizontal position (0 = left edge, 100 = right edge). y_min_pct and y_max_pct are vertical position (0 = top edge, 100 = bottom edge). Be as spatially precise as possible.
+Rules for bounding_box: Values are percentages of total image dimensions (0-100).
+0,0 is top-left. x_min_pct/x_max_pct are horizontal (0 = left edge, 100 = right edge).
+y_min_pct/y_max_pct are vertical (0 = top edge, 100 = bottom edge).
+
+Draw the tightest possible box around the element itself - hug its visible boundary,
+do not pad with surrounding wall or sky. For a keystone, box only the keystone shape.
+For a cornice, box only the cornice band, not the wall below it. For a window, box
+the full window opening including frame, not the surrounding facade.
+
+The centroid of the bounding box (average of min/max on each axis) is used to place
+a marker dot on screen. A loose box shifts the centroid away from the element's visual
+center. Precision here directly improves what users see.
 
 Identify at least 10 elements if visible. Do not invent elements not present in the image. If fewer than 3 architectural elements are visible (e.g. not a building facade), return an empty elements array and set building_summary.probable_style to "not_a_facade".
+
+For repeated elements (e.g. windows on multiple floors), identify each floor's windows
+as a separate element with its own name ("Third-Floor Windows", "Fourth-Floor Windows")
+and its own tight bounding box centered on that floor's window group. Do not merge all
+windows of the same type into a single large bounding box spanning multiple floors - this
+produces an inaccurate centroid in the middle of the facade.
 
 Do not use **bold**, *italic*, backticks, or any markdown syntax in any string value — plain prose only.
 
@@ -194,5 +211,6 @@ The critique should read like a paragraph from a well-written architectural revi
 |---|---|---|---|
 | v0.1 | April 2026 | Initial prompt from spec Appendix A | Baseline — validated on 1 Brooklyn facade |
 | v0.2 | 2026-04-21 | Forbid markdown in any string; glass-facade density guidance; confidence calibration; critique specificity | Addresses Issues 2/3/4 from Known Issues; required before beta launch |
+| v0.3 | April 2026 | Tightened bounding box instructions: explicit tight-box rule, centroid explanation, per-floor window separation | Marker dots landing offset from features due to loose zone-style boxes |
 
 *Add entries here as the prompt evolves.*

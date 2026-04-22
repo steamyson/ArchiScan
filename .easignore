@@ -1,0 +1,27 @@
+# Dependencies — EAS installs from package.json
+node_modules/
+
+# Tamagui build cache — regenerated on build
+.tamagui/
+
+# Gradle caches — regenerated during Android build
+android/.gradle/
+android/app/build/
+android/app/.cxx/
+
+# Expo local cache
+.expo/
+
+# Local secrets — must not be uploaded
+.env.local
+.env*.local
+
+# Local dev artifacts
+crash.log
+
+# IDE / editor config
+.idea/
+.claude/
+
+# Design & documentation assets
+FACADELENS_DESIGN.pdf

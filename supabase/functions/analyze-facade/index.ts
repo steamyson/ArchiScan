@@ -6,7 +6,7 @@ const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GEMINI_PROMPT_VERSION = "0.2";
+const GEMINI_PROMPT_VERSION = "0.3";
 
 const SYSTEM_PROMPT = `You are an architectural analysis engine. Analyze this building facade photograph and return ONLY a valid JSON object with no additional text, no markdown formatting, no code fences.
 
@@ -41,9 +41,26 @@ The JSON must follow this exact schema:
   }
 }
 
-Rules for bounding_box: Values are percentages of total image dimensions. 0,0 is the top-left corner. x_min_pct and x_max_pct are horizontal position (0 = left edge, 100 = right edge). y_min_pct and y_max_pct are vertical position (0 = top edge, 100 = bottom edge). Be as spatially precise as possible.
+Rules for bounding_box: Values are percentages of total image dimensions (0-100).
+0,0 is top-left. x_min_pct/x_max_pct are horizontal (0 = left edge, 100 = right edge).
+y_min_pct/y_max_pct are vertical (0 = top edge, 100 = bottom edge).
+
+Draw the tightest possible box around the element itself - hug its visible boundary,
+do not pad with surrounding wall or sky. For a keystone, box only the keystone shape.
+For a cornice, box only the cornice band, not the wall below it. For a window, box
+the full window opening including frame, not the surrounding facade.
+
+The centroid of the bounding box (average of min/max on each axis) is used to place
+a marker dot on screen. A loose box shifts the centroid away from the element's visual
+center. Precision here directly improves what users see.
 
 Identify at least 10 elements if visible. Do not invent elements not present in the image. If fewer than 3 architectural elements are visible (e.g. not a building facade), return an empty elements array and set building_summary.probable_style to "not_a_facade".
+
+For repeated elements (e.g. windows on multiple floors), identify each floor's windows
+as a separate element with its own name ("Third-Floor Windows", "Fourth-Floor Windows")
+and its own tight bounding box centered on that floor's window group. Do not merge all
+windows of the same type into a single large bounding box spanning multiple floors - this
+produces an inaccurate centroid in the middle of the facade.
 
 Do not use **bold**, *italic*, backticks, or any markdown syntax in any string value — plain prose only.
 

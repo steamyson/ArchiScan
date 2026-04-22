@@ -32,21 +32,17 @@ const MIN_SPACING = 6;
  */
 export function computeLabelPositions(
   elements: ArchitecturalElement[],
-  imageWidth: number,
-  imageHeight: number,
+  containerWidth: number,
+  containerHeight: number,
 ): LabelPosition[] {
   const positions: LabelPosition[] = elements.map((el) => {
-    const cx = ((el.bounding_box.x_min_pct + el.bounding_box.x_max_pct) / 2 / 100) * imageWidth;
-    const cy = ((el.bounding_box.y_min_pct + el.bounding_box.y_max_pct) / 2 / 100) * imageHeight;
-    const side = cx < imageWidth / 2 ? "left" : "right";
-    const edgeX =
-      side === "left"
-        ? (el.bounding_box.x_min_pct / 100) * imageWidth
-        : (el.bounding_box.x_max_pct / 100) * imageWidth;
+    const cx = ((el.bounding_box.x_min_pct + el.bounding_box.x_max_pct) / 2 / 100) * containerWidth;
+    const cy = ((el.bounding_box.y_min_pct + el.bounding_box.y_max_pct) / 2 / 100) * containerHeight;
+    const side = cx < containerWidth / 2 ? "left" : "right";
     return {
       element: el,
       side,
-      leaderEndX: edgeX,
+      leaderEndX: cx,
       leaderEndY: cy,
       labelY: cy,
     };

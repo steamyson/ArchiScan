@@ -5,7 +5,9 @@ import { YStack } from "tamagui";
 import type { ArchitecturalElement } from "../types/scan";
 import { computeLabelPositions } from "../lib/overlayLayout";
 import { LeaderLineOverlay } from "./LeaderLineOverlay";
+import { MarkerOverlay } from "./MarkerOverlay";
 import { ElementDetailCard } from "./ElementDetailCard";
+import { usePreferencesStore } from "../stores/preferencesStore";
 
 interface Props {
   elements: ArchitecturalElement[];
@@ -37,6 +39,7 @@ export function OverlayCanvas({ elements, imageUri }: Props) {
   const insets = useSafeAreaInsets();
   const [imageSize, setImageSize] = useState<{ w: number; h: number } | null>(null);
   const [selected, setSelected] = useState<ArchitecturalElement | null>(null);
+  const overlayMode = usePreferencesStore((s) => s.overlayMode);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,11 +88,20 @@ export function OverlayCanvas({ elements, imageUri }: Props) {
             height={layout.rect.h}
             pointerEvents="box-none"
           >
-            <LeaderLineOverlay
-              positions={layout.positions}
-              containerWidth={layout.rect.w}
-              onLabelPress={setSelected}
-            />
+            {overlayMode === 'diagram' ? (
+              <LeaderLineOverlay
+                positions={layout.positions}
+                containerWidth={layout.rect.w}
+                onLabelPress={setSelected}
+              />
+            ) : (
+              <MarkerOverlay
+                positions={layout.positions}
+                containerWidth={layout.rect.w}
+                containerHeight={layout.rect.h}
+                onMarkerPress={setSelected}
+              />
+            )}
           </YStack>
         </>
       ) : null}
