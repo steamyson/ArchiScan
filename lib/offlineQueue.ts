@@ -48,8 +48,17 @@ async function writeQueue(queue: QueuedScan[]): Promise<void> {
   await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
 }
 
+export async function isInQueue(imagePath: string): Promise<boolean> {
+  const queue = await getQueue();
+  return queue.some((item) => item.imagePath === imagePath);
+}
+
 export async function enqueue(item: EnqueueInput): Promise<void> {
   const existing = await getQueue();
+  if (existing.some((q) => q.imagePath === item.imagePath)) {
+    logInfo("offlineQueue.enqueue", "duplicate skipped", { imagePath: item.imagePath });
+    return;
+  }
   const next: QueuedScan[] = [...existing, { ...item, queuedAt: new Date().toISOString() }];
   await writeQueue(next);
   logInfo("offlineQueue.enqueue", "queued scan", { size: next.length });
