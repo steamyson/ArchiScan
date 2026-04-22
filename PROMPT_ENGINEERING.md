@@ -1,6 +1,6 @@
 # FacadeLens — Prompt Engineering
 
-**Version:** 0.1 (validated on Brooklyn prewar facade, April 2026)
+**Version:** 0.2 (April 2026 — addresses markdown bleed, glass-facade density, confidence inflation, critique specificity)
 **Purpose:** Version, test, and iterate the Gemini vision prompt. The AI prompt is the core product feature — treat it as first-class code with its own changelog, test matrix, and scoring rubric.
 
 ---
@@ -17,7 +17,7 @@ The structured system prompt that drives element identification and critique gen
 
 ---
 
-## Current Prompt (v0.1)
+## Current Prompt (v0.2)
 
 ```
 You are an architectural analysis engine. Analyze this building facade photograph and return ONLY a valid JSON object with no additional text, no markdown formatting, no code fences.
@@ -56,6 +56,14 @@ The JSON must follow this exact schema:
 Rules for bounding_box: Values are percentages of total image dimensions. 0,0 is the top-left corner. x_min_pct and x_max_pct are horizontal position (0 = left edge, 100 = right edge). y_min_pct and y_max_pct are vertical position (0 = top edge, 100 = bottom edge). Be as spatially precise as possible.
 
 Identify at least 10 elements if visible. Do not invent elements not present in the image. If fewer than 3 architectural elements are visible (e.g. not a building facade), return an empty elements array and set building_summary.probable_style to "not_a_facade".
+
+Do not use **bold**, *italic*, backticks, or any markdown syntax in any string value — plain prose only.
+
+For modern glass curtain walls, treat module systems, mullion patterns, spandrel panels, and structural bays as distinct elements. Aim for the same 10+ element density as traditional masonry facades.
+
+Assign "low" confidence to any element that is partially obstructed, in shadow, at the edge of the frame, or identified primarily from context rather than visible features. Reserve "high" confidence for elements with fully visible, unambiguous features.
+
+In every critique dimension, reference specific visible elements by name (e.g. "the cornice course", "the central entry bay"). Avoid generic statements that could apply to any facade.
 ```
 
 **Gemini config:**
@@ -134,20 +142,15 @@ Test every prompt version against these 12 facade types. Document score + notes 
 
 ### Issue 2: Markdown bold in critique text
 **Symptom:** Model wraps key terms in `**bold**` even with instructions to return plain text
-**Status:** Known, handled in frontend with `stripMarkdown()` utility
-**Mitigation:** Add explicit instruction to prompt: "Do not use markdown formatting in critique text — plain prose only."
-**Prompt update needed:** Yes — add to next version
+**Status:** Addressed in v0.2 — prompt now explicitly forbids markdown in any string value. Frontend `stripMarkdown()` remains as belt-and-braces.
 
 ### Issue 3: Element count drops on glass curtain walls
 **Symptom:** Modern glass facades return 3–5 elements instead of 10+
-**Status:** Observed in informal testing
-**Mitigation idea:** Add prompt instruction: "For modern glass facades with minimal ornament, identify module systems, mullion patterns, spandrel panels, and structural bays as distinct elements."
-**Prompt update needed:** Yes — include in v0.2
+**Status:** Addressed in v0.2 — prompt guides model to treat module systems, mullion patterns, spandrel panels, and structural bays as distinct elements.
 
 ### Issue 4: Confidence inflation
 **Symptom:** Model returns `high` confidence for most elements even on obstructed facades
-**Status:** Suspected but unconfirmed
-**Mitigation idea:** Add calibration instruction: "Assign `low` confidence to any element that is partially obstructed, in shadow, or identified primarily by context rather than visible features."
+**Status:** Addressed in v0.2 — prompt calibrates `low` for obstructed/shadowed/edge-of-frame/contextual elements; reserves `high` for fully visible features. Verify effectiveness in next test matrix run.
 
 ---
 
@@ -190,5 +193,6 @@ The critique should read like a paragraph from a well-written architectural revi
 | Version | Date | Change | Reason |
 |---|---|---|---|
 | v0.1 | April 2026 | Initial prompt from spec Appendix A | Baseline — validated on 1 Brooklyn facade |
+| v0.2 | 2026-04-21 | Forbid markdown in any string; glass-facade density guidance; confidence calibration; critique specificity | Addresses Issues 2/3/4 from Known Issues; required before beta launch |
 
 *Add entries here as the prompt evolves.*

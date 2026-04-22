@@ -73,14 +73,15 @@ export default function ScanScreen() {
         if (session?.user?.id) {
           setPhase("analyzing");
           try {
-            const { scanId, analysis, cached, visibilityNote } = await analyzeFacade({
+            const { scanId, analysis, cached, visibilityNote, promptVersion, modelUsed } = await analyzeFacade({
               imagePath: storagePath,
               userId: session.user.id,
               location: coords,
               address,
+              localUri: localCorrectedUri,
             });
             if (__DEV__) {
-              console.log("[M2] scanId", scanId, "elements", analysis.elements.length, "cached", cached);
+              console.log("[M2] scanId", scanId, "elements", analysis.elements.length, "cached", cached, "promptVersion", promptVersion, "modelUsed", modelUsed);
             }
             setScanResult({
               scanId,

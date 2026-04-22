@@ -50,4 +50,17 @@ export interface ScanRecord {
   captured_at: string;
   tags?: string[] | null;
   saved?: boolean;
+  prompt_version?: string | null;
+  model_used?: string | null;
+}
+
+/** Wire shape returned by the analyze-facade Edge Function on success. */
+export interface AnalyzeResponse {
+  scanId: string;
+  analysis: AnalysisResult;
+  cached?: boolean;
+  building_address?: string | null;
+  visibility_note?: string | null;
+  promptVersion?: string | null;
+  modelUsed?: string | null;
 }

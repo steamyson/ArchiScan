@@ -1,4 +1,5 @@
-import type { AnalysisResult } from "../types/scan";
+import * as FileSystem from "expo-file-system";
+import type { AnalyzeResponse } from "../types/scan";
 import { supabase } from "./supabase";
 
 export class NotAFacadeError extends Error {
@@ -6,14 +7,6 @@ export class NotAFacadeError extends Error {
     super(message);
     this.name = "NotAFacadeError";
   }
-}
-
-interface AnalyzeSuccessResponse {
-  scanId: string;
-  analysis: AnalysisResult;
-  cached?: boolean;
-  building_address?: string | null;
-  visibility_note?: string | null;
 }
 
 interface AnalyzeNotFacadeResponse {
@@ -30,7 +23,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isAnalyzeSuccessResponse(value: unknown): value is AnalyzeSuccessResponse {
+function isAnalyzeSuccessResponse(value: unknown): value is AnalyzeResponse {
   if (!isRecord(value)) {
     return false;
   }
@@ -92,7 +85,8 @@ export async function analyzeFacade(params: {
   userId: string;
   location: { lat: number; lng: number } | null;
   address: string;
-}): Promise<{ scanId: string; analysis: AnalysisResult; cached?: boolean; visibilityNote: string | null }> {
+  localUri?: string;
+}): Promise<{ scanId: string; analysis: AnalyzeResponse["analysis"]; cached?: boolean; visibilityNote: string | null; promptVersion: string | null; modelUsed: string | null }> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -101,9 +95,23 @@ export async function analyzeFacade(params: {
     throw new Error("Not signed in. Sign in again to analyze facades.");
   }
 
+  let imageBase64: string | undefined;
+  if (params.localUri) {
+    try {
+      imageBase64 = await FileSystem.readAsStringAsync(params.localUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    } catch {
+      // fall through — edge function will download from storage instead
+    }
+  }
+
+  const { localUri: _localUri, ...bodyParams } = params;
+  const body = imageBase64 ? { ...bodyParams, imageBase64 } : bodyParams;
+
   const invoke = () =>
     supabase.functions.invoke("analyze-facade", {
-      body: params,
+      body,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
@@ -137,8 +145,10 @@ export async function analyzeFacade(params: {
 
   return {
     scanId: data.scanId,
-    analysis: data.analysis as AnalysisResult,
+    analysis: data.analysis,
     cached: data.cached,
     visibilityNote: data.visibility_note ?? null,
+    promptVersion: data.promptVersion ?? null,
+    modelUsed: data.modelUsed ?? null,
   };
 }

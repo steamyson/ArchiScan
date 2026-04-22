@@ -1,9 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.3";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const GEMINI_PROMPT_VERSION = "0.2";
 
 const SYSTEM_PROMPT = `You are an architectural analysis engine. Analyze this building facade photograph and return ONLY a valid JSON object with no additional text, no markdown formatting, no code fences.
 
@@ -40,7 +43,46 @@ The JSON must follow this exact schema:
 
 Rules for bounding_box: Values are percentages of total image dimensions. 0,0 is the top-left corner. x_min_pct and x_max_pct are horizontal position (0 = left edge, 100 = right edge). y_min_pct and y_max_pct are vertical position (0 = top edge, 100 = bottom edge). Be as spatially precise as possible.
 
-Identify at least 10 elements if visible. Do not invent elements not present in the image. If fewer than 3 architectural elements are visible (e.g. not a building facade), return an empty elements array and set building_summary.probable_style to "not_a_facade".`;
+Identify at least 10 elements if visible. Do not invent elements not present in the image. If fewer than 3 architectural elements are visible (e.g. not a building facade), return an empty elements array and set building_summary.probable_style to "not_a_facade".
+
+Do not use **bold**, *italic*, backticks, or any markdown syntax in any string value — plain prose only.
+
+For modern glass curtain walls, treat module systems, mullion patterns, spandrel panels, and structural bays as distinct elements. Aim for the same 10+ element density as traditional masonry facades.
+
+Assign "low" confidence to any element that is partially obstructed, in shadow, at the edge of the frame, or identified primarily from context rather than visible features. Reserve "high" confidence for elements with fully visible, unambiguous features.
+
+In every critique dimension, reference specific visible elements by name (e.g. "the cornice course", "the central entry bay"). Avoid generic statements that could apply to any facade.`;
+
+const BoundingBoxSchema = z.object({
+  x_min_pct: z.number(),
+  y_min_pct: z.number(),
+  x_max_pct: z.number(),
+  y_max_pct: z.number(),
+});
+
+const ElementSchema = z.object({
+  name: z.string(),
+  definition: z.string(),
+  bounding_box: BoundingBoxSchema,
+  confidence: z.enum(["high", "medium", "low"]),
+  hierarchy: z.enum(["primary_structure", "secondary_cladding", "ornamental_detail"]),
+});
+
+const AnalysisSchema = z.object({
+  building_summary: z.object({
+    probable_style: z.string(),
+    estimated_period: z.string(),
+    structural_system: z.string(),
+  }),
+  elements: z.array(ElementSchema),
+  critique: z.object({
+    rhythm_and_repetition: z.string(),
+    proportion_and_scale: z.string(),
+    materiality_and_tectonics: z.string(),
+    contextual_dialogue: z.string(),
+    light_and_shadow: z.string(),
+  }),
+});
 
 interface LocationBody {
   lat: number;
@@ -52,6 +94,7 @@ interface AnalyzeRequestBody {
   userId?: string;
   location?: LocationBody | null;
   address?: string | null;
+  imageBase64?: string | null;
 }
 
 function isNotAFacade(analysis: {
@@ -139,7 +182,7 @@ Deno.serve(async (req) => {
     }
 
     const body = (await req.json()) as AnalyzeRequestBody;
-    const { imagePath, userId, location, address } = body;
+    const { imagePath, userId, location, address, imageBase64 } = body;
 
     if (!imagePath || !userId) {
       return new Response(JSON.stringify({ error: "Missing imagePath or userId" }), {
@@ -166,7 +209,7 @@ Deno.serve(async (req) => {
 
     const { data: existingScan, error: existingErr } = await supabase
       .from("scans")
-      .select("id, overlay_data, building_summary, critique_text")
+      .select("id, overlay_data, building_summary, critique_text, prompt_version, model_used")
       .eq("image_url", imagePath)
       .maybeSingle();
 
@@ -218,22 +261,27 @@ Deno.serve(async (req) => {
           cached: true,
           analysis,
           building_address: address ?? null,
+          promptVersion: (existingScan.prompt_version as string | null) ?? null,
+          modelUsed: (existingScan.model_used as string | null) ?? null,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const { data: imageData, error: downloadError } = await supabase.storage.from("facade-photos").download(imagePath);
-
-    if (downloadError || !imageData) {
-      return new Response(JSON.stringify({ error: "Image download failed" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    let base64Image: string;
+    if (imageBase64) {
+      base64Image = imageBase64;
+    } else {
+      const { data: imageData, error: downloadError } = await supabase.storage.from("facade-photos").download(imagePath);
+      if (downloadError || !imageData) {
+        return new Response(JSON.stringify({ error: "Image download failed" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const arrayBuffer = await imageData.arrayBuffer();
+      base64Image = arrayBufferToBase64(arrayBuffer);
     }
-
-    const arrayBuffer = await imageData.arrayBuffer();
-    const base64Image = arrayBufferToBase64(arrayBuffer);
 
     const geminiPayload = JSON.stringify({
       contents: [
@@ -259,6 +307,7 @@ Deno.serve(async (req) => {
 
     let geminiRes!: Response;
     let lastErrText = "";
+    let modelUsed: string | null = null;
     modelLoop:
     for (const model of GEMINI_MODELS) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
@@ -268,7 +317,10 @@ Deno.serve(async (req) => {
           headers: { "Content-Type": "application/json" },
           body: geminiPayload,
         });
-        if (geminiRes.ok) break modelLoop;
+        if (geminiRes.ok) {
+          modelUsed = model;
+          break modelLoop;
+        }
         if (geminiRes.status !== 429 && geminiRes.status !== 503) break modelLoop;
         lastErrText = await geminiRes.text();
         if (attempt < RETRIES_PER_MODEL - 1) {
@@ -301,7 +353,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    const analysis = normalizeAnalysis(parsed);
+    const normalized = normalizeAnalysis(parsed);
+    const validation = AnalysisSchema.safeParse(normalized);
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({
+          error: "Analysis schema validation failed",
+          issues: validation.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const analysis = validation.data;
 
     if (isNotAFacade(analysis)) {
       return new Response(
@@ -332,6 +395,8 @@ Deno.serve(async (req) => {
       p_lng: location?.lng ?? null,
       p_lat: location?.lat ?? null,
       p_captured_at: new Date().toISOString(),
+      p_prompt_version: GEMINI_PROMPT_VERSION,
+      p_model_used: modelUsed,
     });
 
     if (rpcError || !scanId) {
@@ -347,6 +412,8 @@ Deno.serve(async (req) => {
         analysis,
         building_address: address ?? null,
         visibility_note: visibilityNote,
+        promptVersion: GEMINI_PROMPT_VERSION,
+        modelUsed,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
