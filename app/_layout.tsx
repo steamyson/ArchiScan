@@ -2,7 +2,7 @@ import 'react-native-gesture-handler';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
-import { TamaguiProvider, PortalProvider } from 'tamagui';
+import { TamaguiProvider, Theme } from 'tamagui';
 import NetInfo from '@react-native-community/netinfo';
 import { useFonts } from 'expo-font';
 import {
@@ -16,11 +16,18 @@ import {
 import { BebasNeue_400Regular } from '@expo-google-fonts/bebas-neue';
 import tamaguiConfig from '../tamagui.config';
 import { useAuthStore } from '../stores/authStore';
+import { useThemeStore } from '../stores/themeStore';
 import { supabase } from '../lib/supabase';
 import { processQueue } from '../lib/offlineQueue';
 import { logError } from '../lib/logger';
 
 export default function RootLayout() {
+  const { colorScheme, init } = useThemeStore();
+
+  useEffect(() => {
+    void init();
+  }, [init]);
+
   useFonts({
     CormorantGaramond_300Light,
     CormorantGaramond_300Light_Italic,
@@ -67,9 +74,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <TamaguiProvider config={tamaguiConfig} defaultTheme="dark">
-        <PortalProvider shouldAddRootHost>
+        <Theme name={colorScheme}>
           <Stack screenOptions={{ headerShown: false }} />
-        </PortalProvider>
+        </Theme>
       </TamaguiProvider>
     </GestureHandlerRootView>
   );

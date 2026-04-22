@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { YStack, Text, Button } from 'tamagui';
+import { YStack, XStack, Text, Button, Switch } from 'tamagui';
 import { signOut } from '../../lib/auth';
 import { logError } from '../../lib/logger';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/authStore';
+import { useThemeStore } from '../../stores/themeStore';
 
 export default function ProfileScreen() {
   const session = useAuthStore((s) => s.session);
+  const { colorScheme, toggleColorScheme } = useThemeStore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [scanCount, setScanCount] = useState<number | null>(null);
@@ -76,6 +78,17 @@ export default function ProfileScreen() {
           {scanCount ?? '—'}
         </Text>
       </YStack>
+      <XStack justifyContent="space-between" alignItems="center" paddingVertical="$3">
+        <Text fontSize={15} color="$color">Light mode</Text>
+        <Switch
+          checked={colorScheme === 'light'}
+          onCheckedChange={toggleColorScheme}
+          size="$3"
+          backgroundColor={colorScheme === 'light' ? '#c8a96e' : '$backgroundFocus'}
+        >
+          <Switch.Thumb animation="quick" />
+        </Switch>
+      </XStack>
       <Button
         marginTop="$4"
         backgroundColor="$backgroundFocus"
