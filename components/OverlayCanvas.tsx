@@ -75,7 +75,7 @@ export function OverlayCanvas({ elements, imageUri }: Props) {
               width: layout.rect.w,
               height: layout.rect.h,
             }}
-            resizeMode="cover"
+            resizeMode="contain"
           />
           <YStack
             position="absolute"

@@ -38,10 +38,15 @@ export function computeLabelPositions(
   const positions: LabelPosition[] = elements.map((el) => {
     const cx = ((el.bounding_box.x_min_pct + el.bounding_box.x_max_pct) / 2 / 100) * imageWidth;
     const cy = ((el.bounding_box.y_min_pct + el.bounding_box.y_max_pct) / 2 / 100) * imageHeight;
+    const side = cx < imageWidth / 2 ? "left" : "right";
+    const edgeX =
+      side === "left"
+        ? (el.bounding_box.x_min_pct / 100) * imageWidth
+        : (el.bounding_box.x_max_pct / 100) * imageWidth;
     return {
       element: el,
-      side: cx < imageWidth / 2 ? "left" : "right",
-      leaderEndX: cx,
+      side,
+      leaderEndX: edgeX,
       leaderEndY: cy,
       labelY: cy,
     };
