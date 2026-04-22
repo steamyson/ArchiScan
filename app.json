@@ -25,6 +25,13 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ]
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2c03dd3a-c29e-4440-b794-1e7cc023a902"
+      }
+    },
+    "owner": "akivagroener"
   }
 }
