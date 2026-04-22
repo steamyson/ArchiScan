@@ -1,5 +1,8 @@
 const ACCESS_KEY = process.env.EXPO_PUBLIC_UNSPLASH_ACCESS_KEY;
 
+/** Pinned photo: Brooklyn brownstone row houses with ornate stairs. */
+const SAMPLE_PHOTO_ID = "Dhv_gvjW-FE";
+
 export interface UnsplashPhoto {
   id: string;
   url: string;
@@ -10,7 +13,7 @@ export interface UnsplashPhoto {
 export async function fetchSampleFacadePhoto(): Promise<UnsplashPhoto> {
   if (!ACCESS_KEY) throw new Error("EXPO_PUBLIC_UNSPLASH_ACCESS_KEY is not set");
   const res = await fetch(
-    `https://api.unsplash.com/photos/random?query=building+facade+architecture+new+york&orientation=portrait&client_id=${ACCESS_KEY}`,
+    `https://api.unsplash.com/photos/${SAMPLE_PHOTO_ID}?client_id=${ACCESS_KEY}`,
   );
   if (!res.ok) throw new Error(`Unsplash error: ${res.status}`);
   const data = await res.json();
