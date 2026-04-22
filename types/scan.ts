@@ -52,6 +52,7 @@ export interface ScanRecord {
   saved?: boolean;
   prompt_version?: string | null;
   model_used?: string | null;
+  overall_confidence?: number | null;
 }
 
 /** Wire shape returned by the analyze-facade Edge Function on success. */
@@ -63,4 +64,5 @@ export interface AnalyzeResponse {
   visibility_note?: string | null;
   promptVersion?: string | null;
   modelUsed?: string | null;
+  overallConfidence?: number | null;
 }

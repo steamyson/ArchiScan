@@ -366,6 +366,13 @@ Deno.serve(async (req) => {
     }
     const analysis = validation.data;
 
+    const total = analysis.elements.length;
+    const highCount = analysis.elements.filter((e) => e.confidence === "high").length;
+    const medCount = analysis.elements.filter((e) => e.confidence === "medium").length;
+    const overallConfidence = total > 0
+      ? Math.round(((highCount * 1.0 + medCount * 0.5) / total) * 100) / 100
+      : null;
+
     if (isNotAFacade(analysis)) {
       return new Response(
         JSON.stringify({
@@ -397,6 +404,7 @@ Deno.serve(async (req) => {
       p_captured_at: new Date().toISOString(),
       p_prompt_version: GEMINI_PROMPT_VERSION,
       p_model_used: modelUsed,
+      p_overall_confidence: overallConfidence,
     });
 
     if (rpcError || !scanId) {
@@ -414,6 +422,7 @@ Deno.serve(async (req) => {
         visibility_note: visibilityNote,
         promptVersion: GEMINI_PROMPT_VERSION,
         modelUsed,
+        overallConfidence,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
