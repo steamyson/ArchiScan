@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { OverlayCanvas } from "../components/OverlayCanvas";
@@ -21,6 +21,7 @@ export default function OverlayScreen() {
   const buildingAddress = useScanStore((s) => s.buildingAddress);
   const scanId = useScanStore((s) => s.scanId);
   const visibilityNote = useScanStore((s) => s.visibilityNote);
+  const sampleAttribution = useScanStore((s) => s.sampleAttribution);
   const [view, setView] = useState<OverlayView>("overlay");
   const [sheetVisible, setSheetVisible] = useState(false);
 
@@ -63,9 +64,20 @@ export default function OverlayScreen() {
             <CritiqueUnavailable />
           )}
           {visibilityNote ? <VisibilityNote message={visibilityNote} /> : null}
-          <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
-            <SaveButton scanId={scanId} />
-          </View>
+          {sampleAttribution ? (
+            <Pressable
+              onPress={() => Linking.openURL(sampleAttribution.photographerUrl)}
+              style={styles.attribution}
+            >
+              <Text style={styles.attributionText}>
+                Photo by {sampleAttribution.photographerName} on Unsplash
+              </Text>
+            </Pressable>
+          ) : (
+            <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+              <SaveButton scanId={scanId} />
+            </View>
+          )}
         </ScrollView>
 
         <Pressable
@@ -203,6 +215,15 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: "#888880",
     fontWeight: "500",
+  },
+  attribution: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    alignItems: "center",
+  },
+  attributionText: {
+    fontSize: 11,
+    color: "#555550",
   },
   hintWrap: {
     position: "absolute",

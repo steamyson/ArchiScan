@@ -1,0 +1,100 @@
+{
+  "building_summary": {
+    "probable_style": "Neo-Renaissance / Beaux-Arts Brick Tenement",
+    "estimated_period": "Early 20th Century (1905-1920)",
+    "structural_system": "Unreinforced brick bearing wall, timber floor joists"
+  },
+  "elements": [
+    {
+      "name": "Modillioned Cornice",
+      "definition": "A projecting horizontal molding at the roofline supported by small scroll-shaped brackets (modillions), marking the transition between facade and sky.",
+      "bounding_box": { "x_min_pct": 0, "y_min_pct": 0, "x_max_pct": 100, "y_max_pct": 10 },
+      "confidence": "high",
+      "hierarchy": "ornamental_detail"
+    },
+    {
+      "name": "Brick Facade Field",
+      "definition": "The primary load-bearing wall surface of running-bond red brick, constituting the structural and visual mass of the building.",
+      "bounding_box": { "x_min_pct": 0, "y_min_pct": 0, "x_max_pct": 100, "y_max_pct": 100 },
+      "confidence": "high",
+      "hierarchy": "primary_structure"
+    },
+    {
+      "name": "Rusticated Limestone Base",
+      "definition": "A coursed limestone base with deeply cut joint lines (rustication) that visually anchors the building to the street and differentiates the ground floor from upper floors.",
+      "bounding_box": { "x_min_pct": 0, "y_min_pct": 82, "x_max_pct": 100, "y_max_pct": 100 },
+      "confidence": "high",
+      "hierarchy": "primary_structure"
+    },
+    {
+      "name": "Recessed Entry Portal",
+      "definition": "A deep-set arched entrance framed by a stone surround with decorative voussoirs, providing a formal transition from the public sidewalk into the building lobby.",
+      "bounding_box": { "x_min_pct": 36, "y_min_pct": 72, "x_max_pct": 64, "y_max_pct": 100 },
+      "confidence": "high",
+      "hierarchy": "primary_structure"
+    },
+    {
+      "name": "Keystone",
+      "definition": "A wedge-shaped stone at the crown of the entry arch, often embellished with carved ornament, which locks the arch voussoirs and serves as a focal decorative accent.",
+      "bounding_box": { "x_min_pct": 44, "y_min_pct": 70, "x_max_pct": 56, "y_max_pct": 77 },
+      "confidence": "high",
+      "hierarchy": "ornamental_detail"
+    },
+    {
+      "name": "Belt Course",
+      "definition": "A continuous projecting band of stone running horizontally across the facade between the first and second floors, articulating the floor datum and casting a shadow line.",
+      "bounding_box": { "x_min_pct": 0, "y_min_pct": 69, "x_max_pct": 100, "y_max_pct": 74 },
+      "confidence": "high",
+      "hierarchy": "secondary_cladding"
+    },
+    {
+      "name": "Second-Floor Windows",
+      "definition": "A row of double-hung sash windows on the second floor, each capped by a flat stone lintel with a projecting hood molding and flanked by brick reveals.",
+      "bounding_box": { "x_min_pct": 5, "y_min_pct": 54, "x_max_pct": 95, "y_max_pct": 70 },
+      "confidence": "high",
+      "hierarchy": "secondary_cladding"
+    },
+    {
+      "name": "Third-Floor Windows",
+      "definition": "Double-hung sash windows on the third floor with slightly narrower proportions than the second floor, topped by segmental brick arches with carved stone keystones.",
+      "bounding_box": { "x_min_pct": 5, "y_min_pct": 38, "x_max_pct": 95, "y_max_pct": 54 },
+      "confidence": "high",
+      "hierarchy": "secondary_cladding"
+    },
+    {
+      "name": "Fourth-Floor Windows",
+      "definition": "Upper-floor double-hung windows with minimal ornamentation, their reduced scale reflecting the diminishing hierarchy of Beaux-Arts compositional logic toward the roofline.",
+      "bounding_box": { "x_min_pct": 5, "y_min_pct": 22, "x_max_pct": 95, "y_max_pct": 38 },
+      "confidence": "medium",
+      "hierarchy": "secondary_cladding"
+    },
+    {
+      "name": "Fifth-Floor Windows",
+      "definition": "The topmost row of windows, compressed in height and set directly below the cornice, marking the attic story and completing the vertical rhythm of the facade.",
+      "bounding_box": { "x_min_pct": 5, "y_min_pct": 10, "x_max_pct": 95, "y_max_pct": 22 },
+      "confidence": "medium",
+      "hierarchy": "secondary_cladding"
+    },
+    {
+      "name": "Pilaster Strips",
+      "definition": "Shallow projecting brick pilasters at the facade edges that simulate engaged columns, providing vertical framing and a sense of structural articulation at the building's boundaries.",
+      "bounding_box": { "x_min_pct": 0, "y_min_pct": 0, "x_max_pct": 8, "y_max_pct": 82 },
+      "confidence": "medium",
+      "hierarchy": "ornamental_detail"
+    },
+    {
+      "name": "Stoop and Iron Railing",
+      "definition": "A raised entry stoop of stone steps flanked by cast-iron railings, elevating the entry above the sidewalk grade in the New York tenement tradition.",
+      "bounding_box": { "x_min_pct": 28, "y_min_pct": 88, "x_max_pct": 72, "y_max_pct": 100 },
+      "confidence": "low",
+      "hierarchy": "primary_structure"
+    }
+  ],
+  "critique": {
+    "rhythm_and_repetition": "The facade establishes a five-bay rhythm through the evenly spaced window openings, with each bay corresponding to approximately 18 percent of the total facade width. This repetition is interrupted only at the third bay by the recessed entry portal, which substitutes a full-height arched opening for the standard window unit. The disruption is measured and deliberate: the entry bay is widened by roughly 20 percent relative to its neighbors, enough to assert hierarchy without fracturing the overall cadence. The cornice modillions carry the bay rhythm upward into the roofline, tying the horizontal termination back to the vertical pulse below.",
+    "proportion_and_scale": "The rusticated limestone base occupies the bottom 18 percent of the facade height, establishing a visual weight appropriate to a five-story bearing-wall building. The floor-to-floor heights decrease incrementally from base to cornice, following the Beaux-Arts convention of diminishing register heights, though the compressed fifth-floor windows push this logic close to caricature. The entry portal's arched opening is proportioned at roughly 1.6:1 height-to-width, close to the golden section, lending it a gravitational authority the flanking bays lack.",
+    "materiality_and_tectonics": "The transition from rusticated limestone at the base to running-bond brick above is the facade's most direct tectonic statement: heavy, quarried stone bears the visual load at grade while lighter masonry rises. The belt course between the first and second floors reads as the hinge of this transition, a drawn line across the composition that acknowledges the shift in material register. The brick reveals around the upper windows are narrow, leaving the window units slightly punched into the wall plane rather than projected from it, which reinforces the facade's reading as a single planar mass rather than a layered assembly.",
+    "contextual_dialogue": "The facade's five-story height and 25-foot width conform to the speculative tenement lot standard of turn-of-the-century Brooklyn, aligning its cornice line with adjacent buildings. The modillioned cornice and arched entry portal signal Beaux-Arts aspiration within a budget program, a common negotiation in the borough's dense residential streetscapes. The stoop and iron railing maintain the elevated entry convention shared across the block, preserving the public-private threshold that animates the street wall with human-scaled detail.",
+    "light_and_shadow": "The modillioned cornice casts the deepest shadow on the facade, a jagged horizontal band that defines the roofline from street level and changes character across the day. The belt course produces a secondary shadow line at roughly two-thirds height, dividing the facade into a heavier lower zone and a lighter upper field. The pilaster strips at the facade edges catch oblique afternoon light and produce a shallow vertical shadow that reinforces the building's edges, preventing the facade from dissolving into its neighbors. The recessed entry portal maintains permanent shadow, marking the threshold with a darkness that contrasts the sun-lit brick field above."
+  }
+}

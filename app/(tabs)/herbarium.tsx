@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { YStack, XStack, Text, Button } from "tamagui";
-import { BookBookmark, Funnel, GridFour, List } from "phosphor-react-native";
+import { BookBookmark, Funnel, GridFour, List, Buildings } from "phosphor-react-native";
 import { useHerbariumScans } from "../../hooks/useHerbariumScans";
+import { useSampleFacadePhoto } from "../../hooks/useSampleFacadePhoto";
 import { useHerbariumStore } from "../../stores/herbariumStore";
 import { useAuthStore } from "../../stores/authStore";
+import { useScanStore } from "../../stores/scanStore";
 import { HerbariumGrid } from "../../components/HerbariumGrid";
 import { FilterSheet } from "../../components/FilterSheet";
 import { FullScreenError } from "../../components/shared/FullScreenError";
@@ -19,6 +21,8 @@ export default function HerbariumScreen() {
   const setViewMode = useHerbariumStore((s) => s.setViewMode);
   const filters = useHerbariumStore((s) => s.filters);
   const { scans, signedUrls, loading, error, refetch } = useHerbariumScans();
+  const { photo, analysis, loading: sampleLoading } = useSampleFacadePhoto();
+  const setResult = useScanStore((s) => s.setResult);
   const [filterOpen, setFilterOpen] = useState(false);
 
   if (!session) {
@@ -42,6 +46,55 @@ export default function HerbariumScreen() {
 
   const hasActiveFilters =
     Boolean(filters.style || filters.tag || filters.searchQuery || filters.dateFrom || filters.dateTo);
+
+  const handleViewSample = () => {
+    if (!photo) return;
+    setResult({
+      scanId: null,
+      analysis,
+      localPhotoUri: photo.localUri,
+      storagePath: null,
+      buildingAddress: "Brooklyn, New York",
+      visibilityNote: null,
+      sampleAttribution: {
+        photographerName: photo.photographerName,
+        photographerUrl: photo.photographerUrl,
+      },
+    });
+    router.push("/overlay");
+  };
+
+  if (!loading && scans.length === 0 && !hasActiveFilters) {
+    return (
+      <YStack flex={1} bg="$background" ai="center" jc="center" gap="$5" p="$6" pt={insets.top}>
+        <Buildings size={56} color="#888880" weight="duotone" />
+        <YStack ai="center" gap="$2">
+          <Text fos={20} fontWeight="600" color="$color" ta="center"
+            style={{ fontFamily: "BebasNeue_400Regular", letterSpacing: 2 }}>
+            YOUR HERBARIUM IS EMPTY
+          </Text>
+          <Text fos={14} color="#888880" ta="center" lh={20}>
+            Scan a building facade to start your collection.
+          </Text>
+        </YStack>
+        <Button
+          onPress={handleViewSample}
+          disabled={sampleLoading || !photo}
+          bg="$backgroundStrong"
+          borderWidth={1}
+          borderColor="$borderColor"
+          br="$3"
+          h={44}
+          pressStyle={{ opacity: 0.85 }}
+          icon={<BookBookmark size={18} color="#c8a96e" weight="regular" />}
+        >
+          <Text color="$color" fos={14} fontWeight="600">
+            {sampleLoading ? "Loading sample…" : "View Sample Scan"}
+          </Text>
+        </Button>
+      </YStack>
+    );
+  }
 
   return (
     <YStack flex={1} bg="$background" pt={insets.top}>
